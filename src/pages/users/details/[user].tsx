@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
+import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
 import { Button, ButtonGroup, Col, Container, Tab, Tabs, ListGroup, Row } from 'react-bootstrap';
@@ -23,7 +24,7 @@ interface TranslateRoles {
     translated: string;
 }
 
-export default function UserDetails() {
+const UserDetails: NextPage = () => {
     const router = useRouter();
     const userId = router.query['user'];
 
@@ -261,6 +262,8 @@ export default function UserDetails() {
         </>
     )
 }
+
+export default UserDetails;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
     const { token } = context.req.cookies;

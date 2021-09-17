@@ -14,5 +14,7 @@ export interface Customer {
     owner: string;
     notes: string;
     birth: Date;
+    created_by: string;
+    created_at: Date;
     type: CustomerType;
 }
