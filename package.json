@@ -9,12 +9,36 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "axios": "^0.21.4",
+    "bootstrap": "^5.1.1",
+    "bootstrap-print-css": "^1.0.1",
+    "cep-promise": "^4.1.1",
+    "date-fns": "^2.23.0",
+    "draft-js": "^0.11.7",
+    "draftjs-to-html": "^0.9.1",
+    "formik": "^2.2.9",
+    "html-to-draftjs": "^1.5.0",
+    "immer": "^9.0.6",
+    "js-cookie": "^3.0.1",
     "next": "11.1.2",
+    "next-seo": "^4.26.0",
     "react": "17.0.2",
-    "react-dom": "17.0.2"
+    "react-beautiful-dnd": "^13.1.0",
+    "react-bootstrap": "^2.0.0-beta.6",
+    "react-dom": "17.0.2",
+    "react-draft-wysiwyg": "^1.14.7",
+    "react-icons": "^4.2.0",
+    "yup": "^0.32.9"
   },
   "devDependencies": {
+    "@types/bootstrap": "^5.1.4",
+    "@types/draft-js": "^0.11.5",
+    "@types/draftjs-to-html": "^0.8.1",
+    "@types/html-to-draftjs": "^1.4.0",
+    "@types/js-cookie": "^2.2.7",
     "@types/react": "17.0.20",
+    "@types/react-beautiful-dnd": "^13.1.2",
+    "@types/react-draft-wysiwyg": "^1.13.3",
     "eslint": "7.32.0",
     "eslint-config-next": "11.1.2",
     "typescript": "4.4.2"

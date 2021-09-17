@@ -1,0 +1,17 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-height: 100%;
+}
+
+.content {
+    flex: 1 1;
+    overflow: auto;
+    white-space: nowrap;
+}
