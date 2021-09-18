@@ -5,21 +5,22 @@ import * as Yup from 'yup';
 
 import api from '../../../api/api';
 
-import { Customer } from '../../Customers';
+import { Product } from '../../Products';
 import { AlertMessage, statusModal } from '../AlertMessage';
+import { prettifyCurrency } from '../../InputMask/masks';
 
 interface WaitingModalProps {
     show: boolean,
-    handleCustomer: (customer: Customer) => void;
+    handleProduct: (product: Product) => void;
     handleCloseSearchModal: () => void;
 }
 
 const validationSchema = Yup.object().shape({
-    name: Yup.string().required('Obrigatório!'),
+    title: Yup.string().required('Obrigatório!'),
 });
 
-const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, handleCloseSearchModal }) => {
-    const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+const SearchProducts: React.FC<WaitingModalProps> = ({ show, handleProduct, handleCloseSearchModal }) => {
+    const [productResults, setProductResults] = useState<Product[]>([]);
 
     const [messageShow, setMessageShow] = useState(false);
     const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
@@ -27,21 +28,21 @@ const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, ha
     return (
         <Modal show={show} onHide={handleCloseSearchModal}>
             <Modal.Header closeButton>
-                <Modal.Title>Lista de clientes</Modal.Title>
+                <Modal.Title>Lista de produtos</Modal.Title>
             </Modal.Header>
 
             <Formik
                 initialValues={{
-                    name: '',
+                    title: '',
                 }}
                 onSubmit={async values => {
                     setTypeMessage("waiting");
                     setMessageShow(true);
 
                     try {
-                        const res = await api.get(`customers?name=${values.name}`);
+                        const res = await api.get(`products?title=${values.title}`);
 
-                        setCustomerResults(res.data);
+                        setProductResults(res.data);
 
                         setMessageShow(false);
                     }
@@ -59,20 +60,20 @@ const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, ha
                     <>
                         <Modal.Body>
                             <Form onSubmit={handleSubmit}>
-                                <Form.Group controlId="customerFormGridName">
-                                    <Form.Label>Nome do cliente</Form.Label>
+                                <Form.Group controlId="productFormGridName">
+                                    <Form.Label>Nome do produto</Form.Label>
                                     <Form.Control type="search"
                                         placeholder="Digite para pesquisar"
                                         autoComplete="off"
                                         onChange={(e) => {
-                                            values.name = e.target.value;
+                                            values.title = e.target.value;
 
                                             handleSubmit();
                                         }}
-                                        value={values.name}
-                                        isInvalid={!!errors.name && touched.name}
+                                        value={values.title}
+                                        isInvalid={!!errors.title && touched.title}
                                     />
-                                    <Form.Control.Feedback type="invalid">{touched.name && errors.name}</Form.Control.Feedback>
+                                    <Form.Control.Feedback type="invalid">{touched.title && errors.title}</Form.Control.Feedback>
                                 </Form.Group>
 
                                 <Row style={{ minHeight: '40px' }}>
@@ -87,26 +88,35 @@ const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, ha
                             <Modal.Body style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
                                 <Row style={{ minHeight: '150px' }}>
                                     {
-                                        !!values.name.length && <Col>
+                                        !!values.title.length && <Col>
                                             {
-                                                !!customerResults.length ? <ListGroup className="mt-3 mb-3">
+                                                !!productResults.length ? <ListGroup className="mt-3 mb-3">
                                                     {
-                                                        customerResults.map((customer, index) => {
+                                                        productResults.map((product, index) => {
                                                             return <ListGroup.Item
                                                                 key={index}
                                                                 action
                                                                 variant="light"
-                                                                onClick={() => handleCustomer(customer)}
+                                                                onClick={() => handleProduct(product)}
                                                             >
                                                                 <Row>
                                                                     <Col>
-                                                                        <h6>{customer.name}</h6>
+                                                                        <h6>{product.title}</h6>
                                                                     </Col>
                                                                 </Row>
+
                                                                 <Row>
                                                                     <Col>
                                                                         <span className="text-italic">
-                                                                            {`${customer.document} - ${customer.city}/${customer.state}`}
+                                                                            {`${prettifyCurrency(String(product.inventory_amount))} - R$ ${prettifyCurrency(String(product.price))}`}
+                                                                        </span>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row>
+                                                                    <Col>
+                                                                        <span className="text-italic">
+                                                                            {product.category.title}
                                                                         </span>
                                                                     </Col>
                                                                 </Row>
@@ -114,7 +124,7 @@ const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, ha
                                                         })
                                                     }
                                                 </ListGroup> :
-                                                    <AlertMessage status="warning" message="Nenhum cliente encontrado!" />
+                                                    <AlertMessage status="warning" message="Nenhum produto encontrado!" />
                                             }
                                         </Col>
                                     }
@@ -131,4 +141,4 @@ const SearchCustomers: React.FC<WaitingModalProps> = ({ show, handleCustomer, ha
     )
 }
 
-export default SearchCustomers;
+export default SearchProducts;
