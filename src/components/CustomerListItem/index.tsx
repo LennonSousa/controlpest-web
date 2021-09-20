@@ -50,7 +50,17 @@ const CustomerItem: React.FC<CustomerItemProps> = ({ customer }) => {
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {!!customer.address ? customer.address : <br />}
+                            {`${customer.city} - ${customer.state}`}
+                        </span>
+                    </Col>
+                </Row>
+
+                <Row>
+                    <Col>
+                        <span
+                            className={`form-control-plaintext text-secondary ${styles.itemText}`}
+                        >
+                            {customer.type.name}
                         </span>
                     </Col>
                 </Row>
@@ -59,7 +69,7 @@ const CustomerItem: React.FC<CustomerItemProps> = ({ customer }) => {
                     <ButtonGroup size="sm" className="col-12">
                         <Button
                             variant="success"
-                            title="Lista todos os orçamentos desse cliente."
+                            title="Listar todos os orçamentos desse cliente."
                             onClick={() => handleRoute(`/projects?customer=${customer.id}`)}
                         >
                             <FaFileAlt />

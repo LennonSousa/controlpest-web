@@ -3,10 +3,11 @@ import { GetServerSideProps } from 'next';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, Modal, Row } from 'react-bootstrap';
+import { Button, Col, Container, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { format } from 'date-fns';
+import cep, { CEP } from 'cep-promise';
 
 import api from '../../../api/api';
 import { TokenVerify } from '../../../utils/tokenVerify';
@@ -28,7 +29,11 @@ const validationSchema = Yup.object().shape({
     cellphone: Yup.string().notRequired().nullable(),
     contacts: Yup.string().notRequired().nullable(),
     email: Yup.string().email('E-mail inválido!').notRequired().nullable(),
-    address: Yup.string().notRequired().nullable(),
+    zip_code: Yup.string().notRequired().min(8, 'Deve conter no mínimo 8 caracteres!').max(8, 'Deve conter no máximo 8 caracteres!'),
+    street: Yup.string().notRequired(),
+    number: Yup.string().notRequired(),
+    neighborhood: Yup.string().notRequired(),
+    complement: Yup.string().notRequired().nullable(),
     city: Yup.string().required('Obrigatório!'),
     state: Yup.string().required('Obrigatório!'),
     owner: Yup.string().notRequired().nullable(),
@@ -51,6 +56,7 @@ const EditCustomer: NextPage = () => {
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
 
+    const [spinnerCep, setSpinnerCep] = useState(false);
     const [messageShow, setMessageShow] = useState(false);
     const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
     const [documentType, setDocumentType] = useState("CPF");
@@ -76,7 +82,7 @@ const EditCustomer: NextPage = () => {
                         setDocumentType("CNPJ");
 
                     try {
-                        const stateCities = statesCities.estados.find(item => { return item.nome === res.data.state })
+                        const stateCities = statesCities.estados.find(item => { return item.sigla === res.data.state })
 
                         if (stateCities)
                             setCities(stateCities.cidades);
@@ -183,7 +189,11 @@ const EditCustomer: NextPage = () => {
                                                                     cellphone: customerData.cellphone,
                                                                     contacts: customerData.contacts,
                                                                     email: customerData.email,
-                                                                    address: customerData.address,
+                                                                    zip_code: customerData.zip_code,
+                                                                    street: customerData.street,
+                                                                    number: customerData.number,
+                                                                    neighborhood: customerData.neighborhood,
+                                                                    complement: customerData.complement,
                                                                     city: customerData.city,
                                                                     state: customerData.state,
                                                                     owner: customerData.owner,
@@ -203,7 +213,11 @@ const EditCustomer: NextPage = () => {
                                                                             cellphone: values.cellphone,
                                                                             contacts: values.contacts,
                                                                             email: values.email,
-                                                                            address: values.address,
+                                                                            zip_code: values.zip_code,
+                                                                            street: values.street,
+                                                                            number: values.number,
+                                                                            neighborhood: values.neighborhood,
+                                                                            complement: values.complement,
                                                                             city: values.city,
                                                                             state: values.state,
                                                                             owner: values.owner,
@@ -363,18 +377,114 @@ const EditCustomer: NextPage = () => {
                                                                             </Form.Group>
                                                                         </Row>
 
+                                                                        <Row className="mb-3">
+                                                                            <Form.Group as={Col} lg={2} md={3} sm={5} controlId="formGridZipCode">
+                                                                                <Form.Label>CEP</Form.Label>
+                                                                                <Form.Control
+                                                                                    type="text"
+                                                                                    placeholder="00000000"
+                                                                                    autoComplete="off"
+                                                                                    onChange={(e) => {
+                                                                                        handleChange(e);
+
+                                                                                        if (e.target.value !== '' && e.target.value.length === 8) {
+                                                                                            setSpinnerCep(true);
+                                                                                            cep(e.target.value)
+                                                                                                .then((cep: CEP) => {
+                                                                                                    const { street, neighborhood, city, state } = cep;
+
+                                                                                                    const stateCities = statesCities.estados.find(item => { return item.sigla === state })
+
+                                                                                                    if (stateCities)
+                                                                                                        setCities(stateCities.cidades);
+
+                                                                                                    setFieldValue('street', street);
+                                                                                                    setFieldValue('neighborhood', neighborhood);
+                                                                                                    setFieldValue('city', city);
+                                                                                                    setFieldValue('state', state);
+
+                                                                                                    setSpinnerCep(false);
+                                                                                                })
+                                                                                                .catch(() => {
+                                                                                                    setSpinnerCep(false);
+                                                                                                });
+                                                                                        }
+                                                                                    }}
+                                                                                    value={values.zip_code}
+                                                                                    name="zip_code"
+                                                                                    isInvalid={!!errors.zip_code && touched.zip_code}
+                                                                                />
+                                                                                <Form.Control.Feedback type="invalid">{touched.zip_code && errors.zip_code}</Form.Control.Feedback>
+                                                                            </Form.Group>
+
+                                                                            <Col style={{ display: 'flex', alignItems: 'center' }}>
+                                                                                {
+                                                                                    spinnerCep && <Spinner
+                                                                                        as="span"
+                                                                                        animation="border"
+                                                                                        variant="info"
+                                                                                        role="status"
+                                                                                        aria-hidden="true"
+                                                                                    />
+                                                                                }
+                                                                            </Col>
+                                                                        </Row>
+
                                                                         <Row className="mb-2">
-                                                                            <Form.Group as={Col} sm={6} controlId="formGridAddress">
-                                                                                <Form.Label>Endereço</Form.Label>
+                                                                            <Form.Group as={Col} sm={10} controlId="formGridStreet">
+                                                                                <Form.Label>Rua</Form.Label>
                                                                                 <Form.Control
                                                                                     type="address"
                                                                                     onChange={handleChange}
                                                                                     onBlur={handleBlur}
-                                                                                    value={values.address}
-                                                                                    name="address"
-                                                                                    isInvalid={!!errors.address && touched.address}
+                                                                                    value={values.street}
+                                                                                    name="street"
+                                                                                    isInvalid={!!errors.street && touched.street}
                                                                                 />
-                                                                                <Form.Control.Feedback type="invalid">{touched.address && errors.address}</Form.Control.Feedback>
+                                                                                <Form.Control.Feedback type="invalid">{touched.street && errors.street}</Form.Control.Feedback>
+                                                                            </Form.Group>
+
+                                                                            <Form.Group as={Col} sm={2} controlId="formGridNumber">
+                                                                                <Form.Label>Número</Form.Label>
+                                                                                <Form.Control
+                                                                                    type="text"
+                                                                                    onChange={handleChange}
+                                                                                    onBlur={handleBlur}
+                                                                                    value={values.number}
+                                                                                    name="number"
+                                                                                    isInvalid={!!errors.number && touched.number}
+                                                                                />
+                                                                                <Form.Control.Feedback type="invalid">{touched.number && errors.number}</Form.Control.Feedback>
+                                                                            </Form.Group>
+                                                                        </Row>
+
+                                                                        <Row className="mb-3">
+                                                                            <Form.Group as={Col} controlId="formGridComplement">
+                                                                                <Form.Label>Complemento</Form.Label>
+                                                                                <Form.Control
+                                                                                    type="text"
+                                                                                    onChange={handleChange}
+                                                                                    onBlur={handleBlur}
+                                                                                    value={values.complement}
+                                                                                    name="complement"
+                                                                                    isInvalid={!!errors.complement && touched.complement}
+                                                                                />
+                                                                                <Form.Control.Feedback type="invalid">{touched.complement && errors.complement}</Form.Control.Feedback>
+                                                                            </Form.Group>
+                                                                        </Row>
+
+                                                                        <Row className="mb-2">
+                                                                            <Form.Group as={Col} sm={6} controlId="formGridNeighborhood">
+                                                                                <Form.Label>Bairro</Form.Label>
+                                                                                <Form.Control
+                                                                                    type="text"
+                                                                                    onChange={handleChange}
+                                                                                    onBlur={handleBlur}
+                                                                                    value={values.neighborhood}
+                                                                                    name="neighborhood"
+                                                                                    isInvalid={!!errors.neighborhood && touched.neighborhood}
+                                                                                />
+                                                                                <Form.Control.Feedback type="invalid">{touched.neighborhood && errors.neighborhood}</Form.Control.Feedback>
                                                                             </Form.Group>
 
                                                                             <Form.Group as={Col} sm={2} controlId="formGridState">
@@ -382,7 +492,7 @@ const EditCustomer: NextPage = () => {
                                                                                 <Form.Select
                                                                                     onChange={(e) => {
                                                                                         setFieldValue('state', e.currentTarget.value);
-                                                                                        const stateCities = statesCities.estados.find(item => { return item.nome === e.currentTarget.value })
+                                                                                        const stateCities = statesCities.estados.find(item => { return item.sigla === e.currentTarget.value })
 
                                                                                         if (stateCities)
                                                                                             setCities(stateCities.cidades);
@@ -395,7 +505,7 @@ const EditCustomer: NextPage = () => {
                                                                                     <option hidden>...</option>
                                                                                     {
                                                                                         statesCities.estados.map((estado, index) => {
-                                                                                            return <option key={index} value={estado.nome}>{estado.nome}</option>
+                                                                                            return <option key={index} value={estado.sigla}>{estado.nome}</option>
                                                                                         })
                                                                                     }
                                                                                 </Form.Select>

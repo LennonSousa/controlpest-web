@@ -290,16 +290,76 @@ const CustomerDetails: NextPage = () => {
                                                                 </Row>
 
                                                                 <Row className="mb-3">
-                                                                    <Col sm={6}>
+                                                                    <Col sm={2}>
                                                                         <Row>
                                                                             <Col>
-                                                                                <span className="text-success">Endereço</span>
+                                                                                <span className="text-success">CEP</span>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{customerData.address}</h6>
+                                                                                <h6 className="text-secondary">{customerData.zip_code}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+
+                                                                    <Col sm={8}>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <span className="text-success">Rua</span>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{customerData.street}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+
+                                                                    <Col sm={2} >
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <span className="text-success">Número</span>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{customerData.number}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    <Col sm={4}>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <span className="text-success">Complemento</span>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{customerData.complement}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    <Col sm={6}>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <span className="text-success">Bairro</span>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{customerData.neighborhood}</h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>

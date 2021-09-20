@@ -43,11 +43,11 @@ export function Header() {
             <Navbar.Brand href="#home">
                 <Image
                     alt=""
-                    src="/assets/images/logo-bioma.svg"
+                    src="/assets/images/logo.svg"
                     width="30"
                     height="30"
                     className="d-inline-block align-top"
-                />{' '}Bioma
+                />{` ${process.env.NEXT_PUBLIC_STORE_NAME}`}
             </Navbar.Brand>
 
             <div className={styles.sideNavBarContainer}>

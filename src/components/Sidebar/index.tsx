@@ -258,26 +258,6 @@ const Sidebar: React.FC = () => {
                                 </Link>
 
                                 {
-                                    can(user, "products", "create") && <Link href="/products/new">
-                                        <a title="Criar um novo produto" data-title="Criar um novo produto">
-                                            <Row
-                                                className={
-                                                    selectedMenu === 'products-new' ? styles.selectedMenuCardBodyItem :
-                                                        styles.menuCardBodyItem
-                                                }
-                                            >
-                                                <Col sm={1}>
-                                                    <FaPlus size={14} />
-                                                </Col>
-                                                <Col>
-                                                    <span>Novo</span>
-                                                </Col>
-                                            </Row>
-                                        </a>
-                                    </Link>
-                                }
-
-                                {
                                     can(user, "products", "update") && <>
                                         <Dropdown.Divider />
 

@@ -103,7 +103,7 @@ const Categories: React.FC<CategoriesProps> = ({ category, listCategories, handl
             await handleListCategories();
         }
         catch (err) {
-            console.log("Error to pause customers category.");
+            console.log("Error to pause category.");
             console.log(err);
         }
 
@@ -111,7 +111,7 @@ const Categories: React.FC<CategoriesProps> = ({ category, listCategories, handl
     }
 
     return (
-        <ListGroup.Item variant={category.paused ? "light" : "danger"}>
+        <ListGroup.Item variant={!category.paused ? "light" : "danger"}>
             <Row className="align-items-center">
                 <Col sm={1}>
                     <FaBars />
@@ -133,7 +133,7 @@ const Categories: React.FC<CategoriesProps> = ({ category, listCategories, handl
                                 size="sm"
                                 role="status"
                                 aria-hidden="true"
-                            /> : category.paused ? (<><FaPause /> Pausar</>) : (<><FaPlay /> Pausado</>)
+                            /> : !category.paused ? (<><FaPause /> Pausar</>) : (<><FaPlay /> Pausado</>)
                         }
                     </Button>
                 </Col>

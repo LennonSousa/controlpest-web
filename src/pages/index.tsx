@@ -1,5 +1,5 @@
-import type { NextPage } from 'next';
 import { useContext, useState } from 'react';
+import type { NextPage } from 'next';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -187,6 +187,8 @@ const Home: NextPage = () => {
   )
 }
 
+export default Home;
+
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { token } = context.req.cookies;
 
@@ -217,5 +219,3 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     props: {},
   }
 }
-
-export default Home;

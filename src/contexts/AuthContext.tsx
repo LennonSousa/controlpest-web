@@ -77,7 +77,7 @@ const AuthProvider: React.FC = ({ children }) => {
                 setSigned(true);
                 setLoading(false);
 
-                router.push(`${returnTo ? returnTo : '/dashboard'}`);
+                router.push(`${returnTo ? returnTo : '/estimates'}`);
 
                 return true;
             }
