@@ -29,7 +29,6 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                             </a>
                         </Link>
                     </Col>
-                    {/* <Col className="text-warning" sm={1}>{estimate. && <FaExclamationCircle />}</Col> */}
                 </Row>
 
                 <Row>
@@ -37,7 +36,7 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {!!estimate.customer.document ? estimate.customer.document : <br />}
+                            {!!estimate.city ? estimate.city : <br />}
                         </span>
                     </Col>
                 </Row>
@@ -47,7 +46,7 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {!!estimate.city ? estimate.city : <br />}
+                            {estimate.status.name}
                         </span>
                     </Col>
                 </Row>

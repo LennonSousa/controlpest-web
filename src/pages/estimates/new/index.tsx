@@ -3,11 +3,11 @@ import { GetServerSideProps } from 'next';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, FormControl, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
+import { Button, Col, Container, Form, FormControl, InputGroup, Row, Spinner } from 'react-bootstrap';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { format } from 'date-fns';
-import { FaCashRegister, FaClipboardList, FaCopy, FaMoneyBillWave, FaUserTie, FaPlug, FaPlus, FaSearchPlus, FaSolarPanel } from 'react-icons/fa';
+import { FaCashRegister, FaClipboardList, FaMoneyBillWave, FaUserTie, FaPlus, FaSearchPlus } from 'react-icons/fa';
 import cep, { CEP } from 'cep-promise';
 
 import api from '../../../api/api';
@@ -18,7 +18,7 @@ import { can } from '../../../components/Users';
 import { Customer } from '../../../components/Customers';
 import { EstimateStatus } from '../../../components/EstimateStatus';
 import EstimateItems, { EstimateItem } from '../../../components/EstimateItems';
-import { Product } from '../../../components/Products';
+import { Service } from '../../../components/Services';
 
 import { statesCities } from '../../../components/StatesCities';
 import PageBack from '../../../components/PageBack';
@@ -26,6 +26,7 @@ import { PageWaiting, PageType } from '../../../components/PageWaiting';
 import { AlertMessage, statusModal } from '../../../components/Interfaces/AlertMessage';
 import { prettifyCurrency } from '../../../components/InputMask/masks';
 import SearchCustomers from '../../../components/Interfaces/SearchCustomers';
+import NewEstimateItem from '../../../components/EstimateItems/New';
 
 const validationSchema = Yup.object().shape({
     same_address: Yup.boolean().required('Obrigatório!'),
@@ -45,13 +46,6 @@ const validationSchema = Yup.object().shape({
     status: Yup.string().required('Obrigatório!'),
 });
 
-const estimateItemValidationSchema = Yup.object().shape({
-    name: Yup.string().required('Obrigatório!').max(50, 'Deve conter no máximo 50 caracteres!'),
-    details: Yup.string().notRequired().max(50, 'Deve conter no máximo 50 caracteres!'),
-    amount: Yup.string().required('Obrigatório!'),
-    price: Yup.string().required('Obrigatório!'),
-});
-
 const NewEstimate: NextPage = () => {
     const router = useRouter();
     const { customer } = router.query;
@@ -64,7 +58,7 @@ const NewEstimate: NextPage = () => {
 
     const [estimateStatusList, setEstimateStatusList] = useState<EstimateStatus[]>([]);
     const [estimateItemsList, setEstimateItemsList] = useState<EstimateItem[]>([]);
-    const [productsList, setProductsList] = useState<Product[]>([]);
+    const [servicesList, setServicesList] = useState<Service[]>([]);
 
     const [spinnerCep, setSpinnerCep] = useState(false);
     const [messageShow, setMessageShow] = useState(false);
@@ -81,19 +75,16 @@ const NewEstimate: NextPage = () => {
     const handleCloseSearchModal = () => setShowSearchModal(false);
     const handleShowSearchModal = () => setShowSearchModal(true);
 
-    const [totalPrice, setTotalPrice] = useState(0);
-    const [finalTotalPrice, setFinalTotalPrice] = useState(0);
+    const [showNewEstimateItemModal, setShowNewEstimateItemModal] = useState(false);
 
-    // New items.
-    const [details, setDetails] = useState("");
-    const [price, setPrice] = useState(0);
-    const [amount, setAmount] = useState(0);
-    const [newItemTotalPrice, setNewItemTotalPrice] = useState(0);
+    const handleCloseNewEstimateItemModal = () => setShowNewEstimateItemModal(false);
+    const handleShowNewEstimateItemModal = () => setShowNewEstimateItemModal(true);
 
-    const [showModalEditType, setShowModalEditType] = useState(false);
-
-    const handleCloseModalEditType = () => setShowModalEditType(false);
-    const handleShowModalEditType = () => { handleResetFieldsNewItem; setShowModalEditType(true); };
+    const [subTotal, setSubTotal] = useState(0);
+    const [percent, setPercent] = useState(true);
+    const [discount, setDiscount] = useState(0);
+    const [increase, setIncrease] = useState(0);
+    const [finalTotal, setFinalTotal] = useState(0);
 
     useEffect(() => {
         handleItemSideBar('estimates');
@@ -111,12 +102,12 @@ const NewEstimate: NextPage = () => {
                     setHasErrors(true);
                 });
 
-                api.get('products').then(res => {
-                    setProductsList(res.data);
+                api.get('services').then(res => {
+                    setServicesList(res.data);
 
                     setLoadingData(false);
                 }).catch(err => {
-                    console.log('Error to get products, ', err);
+                    console.log('Error to get services, ', err);
 
                     setTypeLoadingMessage("error");
                     setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
@@ -167,23 +158,6 @@ const NewEstimate: NextPage = () => {
         handleSubTotal(updatedListItems);
     }
 
-    function handleNewItemTotalPrice(price: number, amount: number) {
-        console.log('price: ', price);
-        console.log('amount: ', amount);
-
-        const total = Number(price) * Number(amount);
-
-        console.log('total: ', total);
-
-        setNewItemTotalPrice(total);
-    }
-
-    const handleResetFieldsNewItem = () => {
-        setDetails('');
-        setAmount(0);
-        setPrice(0);
-    }
-
     async function handleListItems(updatedNewItem?: EstimateItem, toDelete?: boolean) {
         if (updatedNewItem) {
             let updatedListItems = estimateItemsList;
@@ -228,7 +202,9 @@ const NewEstimate: NextPage = () => {
             newSubTotal = Number(newSubTotal) + Number(totalItem);
         });
 
-        setTotalPrice(newSubTotal);
+        setSubTotal(newSubTotal);
+
+        handleFinalTotal(newSubTotal, percent, discount, increase);
     }
 
     function handleFinalTotal(subTotal: number, percent: boolean, discount: number, increase: number) {
@@ -243,7 +219,7 @@ const NewEstimate: NextPage = () => {
             if (!percent) finalPrice = subTotal + increase;
         }
 
-        setFinalTotalPrice(finalPrice);
+        setFinalTotal(finalPrice);
     }
 
     return (
@@ -816,8 +792,8 @@ const NewEstimate: NextPage = () => {
                                                                         <Button
                                                                             variant="outline-success"
                                                                             size="sm"
-                                                                            onClick={handleShowModalEditType}
-                                                                            title="Adicionar um novo produto a este orçamento."
+                                                                            onClick={handleShowNewEstimateItemModal}
+                                                                            title="Adicionar um novo serviço a este orçamento."
                                                                         >
                                                                             <FaPlus />
                                                                         </Button>
@@ -864,15 +840,7 @@ const NewEstimate: NextPage = () => {
                                                                     <InputGroup.Text id="btnGroupPreSystemPrice">R$</InputGroup.Text>
                                                                     <Form.Control
                                                                         type="text"
-                                                                        onChange={() => {
-                                                                            handleFinalTotal(
-                                                                                totalPrice,
-                                                                                values.percent,
-                                                                                Number(values.discount.replaceAll(".", "").replaceAll(",", ".")),
-                                                                                Number(values.increase.replaceAll(".", "").replaceAll(",", "."))
-                                                                            )
-                                                                        }}
-                                                                        value={prettifyCurrency(String(totalPrice.toFixed(2)))}
+                                                                        value={prettifyCurrency(String(subTotal.toFixed(2)))}
                                                                         name="pre_system_value"
                                                                         aria-label="Valor do sistema "
                                                                         aria-describedby="btnGroupPreSystemPrice"
@@ -892,6 +860,15 @@ const NewEstimate: NextPage = () => {
                                                                         type="text"
                                                                         onChange={(e) => {
                                                                             setFieldValue('discount', prettifyCurrency(e.target.value));
+
+                                                                            setDiscount(Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")));
+
+                                                                            handleFinalTotal(
+                                                                                subTotal,
+                                                                                percent,
+                                                                                Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")),
+                                                                                increase
+                                                                            );
                                                                         }}
                                                                         onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
                                                                             setFieldValue('discount', prettifyCurrency(e.target.value));
@@ -916,6 +893,15 @@ const NewEstimate: NextPage = () => {
                                                                         type="text"
                                                                         onChange={(e) => {
                                                                             setFieldValue('increase', prettifyCurrency(e.target.value));
+
+                                                                            setIncrease(Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")));
+
+                                                                            handleFinalTotal(
+                                                                                subTotal,
+                                                                                percent,
+                                                                                discount,
+                                                                                Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")),
+                                                                            );
                                                                         }}
                                                                         onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
                                                                             setFieldValue('increase', prettifyCurrency(e.target.value));
@@ -936,7 +922,7 @@ const NewEstimate: NextPage = () => {
                                                                     <InputGroup.Text id="btnGroupTotal">{values.percent ? '%' : 'R$'}</InputGroup.Text>
                                                                     <Form.Control
                                                                         type="text"
-                                                                        value={prettifyCurrency(String(finalTotalPrice.toFixed(2)))}
+                                                                        value={prettifyCurrency(String(finalTotal.toFixed(2)))}
                                                                         name="total"
                                                                         aria-label="Valor"
                                                                         aria-describedby="btnGroupTotal"
@@ -1014,189 +1000,13 @@ const NewEstimate: NextPage = () => {
                                                 }
                                             </Formik >
 
-                                            <Modal show={showModalEditType} onHide={handleCloseModalEditType}>
-                                                <Modal.Header closeButton>
-                                                    <Modal.Title>Adicionar produto</Modal.Title>
-                                                </Modal.Header>
-                                                <Formik
-                                                    initialValues={
-                                                        {
-                                                            name: '',
-                                                            details,
-                                                            amount: prettifyCurrency(String(amount)),
-                                                            price: prettifyCurrency(String(price)),
-                                                        }
-                                                    }
-                                                    onSubmit={async values => {
-                                                        try {
-                                                            const foundProduct = productsList.find(item => { return item.id === values.name });
-
-                                                            if (foundProduct) {
-                                                                setTypeMessage("waiting");
-                                                                setMessageShow(true);
-
-                                                                const newItem: EstimateItem = {
-                                                                    id: String(estimateItemsList.length),
-                                                                    name: foundProduct.title,
-                                                                    details: values.details,
-                                                                    amount: Number(values.amount.replaceAll(".", "").replaceAll(",", ".")),
-                                                                    price: Number(values.price.replaceAll(".", "").replaceAll(",", ".")),
-                                                                    order: estimateItemsList.length,
-                                                                }
-
-                                                                handleNewItemToList(newItem);
-
-                                                                setTypeMessage("success");
-
-                                                                setTimeout(() => {
-                                                                    setMessageShow(false);
-                                                                    handleCloseModalEditType();
-                                                                }, 1000);
-                                                            };
-
-
-                                                        }
-                                                        catch (err) {
-                                                            console.log('error edit estimate item.');
-                                                            console.log(err);
-
-                                                            setTypeMessage("error");
-
-                                                            setTimeout(() => {
-                                                                setMessageShow(false);
-                                                            }, 4000);
-                                                        }
-                                                    }}
-                                                    validationSchema={estimateItemValidationSchema}
-                                                >
-                                                    {({ handleChange, handleBlur, handleSubmit, values, setFieldValue, errors, touched }) => (
-                                                        <Form onSubmit={handleSubmit}>
-                                                            <Modal.Body>
-                                                                <Form.Group controlId="estimateItemFormGridName">
-                                                                    <Form.Label>Produto</Form.Label>
-                                                                    <Form.Control
-                                                                        as="select"
-                                                                        onChange={e => {
-                                                                            handleChange(e);
-
-                                                                            const foundProduct = productsList.find(item => { return item.id === e.target.value });
-
-                                                                            if (foundProduct) setFieldValue('price', prettifyCurrency(String(foundProduct.price)));
-                                                                        }}
-                                                                        onBlur={handleBlur}
-                                                                        value={values.name}
-                                                                        name="name"
-                                                                        isInvalid={!!errors.name && touched.name}
-                                                                    >
-                                                                        <option hidden>...</option>
-                                                                        {
-                                                                            productsList.map((product, index) => {
-                                                                                return <option key={index} value={product.id}>{`${product.title} - R$ ${prettifyCurrency(String(product.price))}`}</option>
-                                                                            })
-                                                                        }
-                                                                    </Form.Control>
-                                                                    <Form.Control.Feedback type="invalid">{touched.name && errors.name}</Form.Control.Feedback>
-                                                                </Form.Group>
-
-                                                                <Form.Group controlId="estimateItemFormGridDetails">
-                                                                    <Form.Label>Detalhes</Form.Label>
-                                                                    <Form.Control type="text"
-                                                                        placeholder="Detalhes do item (opcional)."
-                                                                        onChange={handleChange}
-                                                                        onBlur={handleBlur}
-                                                                        value={values.details}
-                                                                        name="details"
-                                                                        isInvalid={!!errors.details && touched.details}
-                                                                    />
-                                                                    <Form.Control.Feedback type="invalid">{touched.details && errors.details}</Form.Control.Feedback>
-                                                                    <Form.Text className="text-muted text-right">{`${values.details.length}/50 caracteres.`}</Form.Text>
-                                                                </Form.Group>
-
-                                                                <Row className="mb-3">
-                                                                    <Form.Group as={Col} sm={4} controlId="estimateItemFormGridPrice">
-                                                                        <Form.Label>Preço</Form.Label>
-                                                                        <InputGroup>
-                                                                            <InputGroup.Text id="btnGroupPrice">R$</InputGroup.Text>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('price', prettifyCurrency(e.target.value));
-
-                                                                                    const price = Number(prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", "."));
-                                                                                    const amount = Number(values.amount.replaceAll(".", "").replaceAll(",", "."));
-
-                                                                                    handleNewItemTotalPrice(price, amount);
-                                                                                }}
-                                                                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                    setFieldValue('price', prettifyCurrency(e.target.value));
-                                                                                }}
-                                                                                value={values.price}
-                                                                                name="price"
-                                                                                isInvalid={!!errors.price && touched.price}
-                                                                                aria-label="Valor do item"
-                                                                                aria-describedby="btnGroupPrice"
-                                                                            />
-                                                                        </InputGroup>
-                                                                        <Form.Control.Feedback type="invalid">{touched.price && errors.price}</Form.Control.Feedback>
-                                                                    </Form.Group>
-
-                                                                    <Form.Group as={Col} sm={4} controlId="estimateItemFormGridAmount">
-                                                                        <Form.Label>Quantidade</Form.Label>
-                                                                        <InputGroup>
-                                                                            <InputGroup.Text id="btnGroupAmount">Un</InputGroup.Text>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('amount', prettifyCurrency(e.target.value));
-
-                                                                                    const price = Number(values.price.replaceAll(".", "").replaceAll(",", "."));
-                                                                                    const amount = Number(prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", "."));
-
-                                                                                    handleNewItemTotalPrice(price, amount);
-                                                                                }}
-                                                                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                    setFieldValue('amount', prettifyCurrency(e.target.value));
-                                                                                }}
-                                                                                value={values.amount}
-                                                                                name="amount"
-                                                                                isInvalid={!!errors.amount && touched.amount}
-                                                                                aria-label="Valor do item"
-                                                                                aria-describedby="btnGroupAmount"
-                                                                            />
-                                                                        </InputGroup>
-                                                                        <Form.Control.Feedback type="invalid">{touched.amount && errors.amount}</Form.Control.Feedback>
-                                                                    </Form.Group>
-
-                                                                    <Form.Group as={Col} sm={4} controlId="estimateItemFormGridTotal">
-                                                                        <Form.Label>Total</Form.Label>
-                                                                        <InputGroup>
-                                                                            <InputGroup.Text id="btnGroupTotal">R$</InputGroup.Text>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                value={prettifyCurrency(newItemTotalPrice.toFixed(2))}
-                                                                                name="total"
-                                                                                readOnly
-                                                                                aria-label="Total do item"
-                                                                                aria-describedby="btnGroupTotal"
-                                                                            />
-                                                                        </InputGroup>
-                                                                    </Form.Group>
-                                                                </Row>
-                                                            </Modal.Body>
-                                                            <Modal.Footer>
-                                                                {
-                                                                    messageShow ? <AlertMessage status={typeMessage} /> :
-                                                                        <>
-                                                                            <Button variant="secondary" onClick={handleCloseModalEditType}>Cancelar</Button>
-                                                                            <Button variant="success" type="submit">Salvar</Button>
-                                                                        </>
-
-                                                                }
-                                                            </Modal.Footer>
-                                                        </Form>
-                                                    )}
-                                                </Formik>
-                                            </Modal>
+                                            <NewEstimateItem
+                                                show={showNewEstimateItemModal}
+                                                servicesList={servicesList}
+                                                estimateItemsList={estimateItemsList}
+                                                handleNewItemToList={handleNewItemToList}
+                                                handleCloseNewEstimateItemModal={handleCloseNewEstimateItemModal}
+                                            />
 
                                             <SearchCustomers
                                                 show={showSearchModal}

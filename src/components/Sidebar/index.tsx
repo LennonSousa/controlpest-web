@@ -323,11 +323,35 @@ const Sidebar: React.FC = () => {
                         </AccordionButton>
                         <Accordion.Collapse eventKey="services">
                             <Card.Body className={styles.menuCardBody}>
+                                {
+                                    can(user, "services", "view") && <>
+                                        <Dropdown.Divider />
+
+                                        <Link href="/services">
+                                            <a title="Listar os serviços" data-title="Listar os serviços">
+                                                <Row
+                                                    className={
+                                                        selectedMenu === 'services-index' ? styles.selectedMenuCardBodyItem :
+                                                            styles.menuCardBodyItem
+                                                    }
+                                                >
+                                                    <Col sm={1}>
+                                                        <FaDolly size={14} />
+                                                    </Col>
+                                                    <Col>
+                                                        <span>Serviços</span>
+                                                    </Col>
+                                                </Row>
+                                            </a>
+                                        </Link>
+                                    </>
+                                }
+
                                 <Link href="/services">
                                     <a title="Listar as ordens de serviço" data-title="Listar as ordens de serviço">
                                         <Row
                                             className={
-                                                selectedMenu === 'services-index' ? styles.selectedMenuCardBodyItem :
+                                                selectedMenu === 'services-orders' ? styles.selectedMenuCardBodyItem :
                                                     styles.menuCardBodyItem
                                             }
                                         >
@@ -335,7 +359,7 @@ const Sidebar: React.FC = () => {
                                                 <FaList size={14} />
                                             </Col>
                                             <Col>
-                                                <span>Lista</span>
+                                                <span>Ordens</span>
                                             </Col>
                                         </Row>
                                     </a>
