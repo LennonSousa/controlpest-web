@@ -27,9 +27,9 @@ interface EstimateItemsProps {
 
 const validationSchema = Yup.object().shape({
     name: Yup.string().required('Obrigatório!').max(50, 'Deve conter no máximo 50 caracteres!'),
-    details: Yup.string().required('Obrigatório!').max(50, 'Deve conter no máximo 50 caracteres!'),
+    details: Yup.string().notRequired().max(50, 'Deve conter no máximo 50 caracteres!'),
     amount: Yup.string().required('Obrigatório'),
-    price: Yup.boolean().required('Obrigatório'),
+    price: Yup.string().required('Obrigatório'),
 });
 
 const EstimateItems: React.FC<EstimateItemsProps> = ({ estimateItem, isNewItem = true, handleListItems }) => {

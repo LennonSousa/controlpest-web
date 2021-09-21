@@ -153,7 +153,13 @@ const Products: React.FC<ProductsProps> = ({ product, listProducts, categories, 
                 </Col>
 
                 <Col className="text-end">
-                    <Button variant="outline-success" className="button-link" onClick={handleShowModalEditProduct}><FaPencilAlt /> Editar</Button>
+                    <Button
+                        variant="outline-success"
+                        className="button-link"
+                        onClick={handleShowModalEditProduct}
+                    >
+                        <FaPencilAlt /> Editar
+                    </Button>
                 </Col>
             </Row>
 
