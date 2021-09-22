@@ -13,7 +13,7 @@ import api from '../../../api/api';
 import { TokenVerify } from '../../../utils/tokenVerify';
 import { SideBarContext } from '../../../contexts/SideBarContext';
 import { AuthContext } from '../../../contexts/AuthContext';
-import { User, can } from '../../../components/Users';
+import { can } from '../../../components/Users';
 import { CustomerType } from '../../../components/CustomerTypes';
 import { cpf, cnpj, cellphone } from '../../../components/InputMask/masks';
 import { statesCities } from '../../../components/StatesCities';
@@ -81,6 +81,13 @@ const NewCustomer: NextPage = () => {
         }
 
     }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function handleCities(state: string) {
+        const stateCities = statesCities.estados.find(item => { return item.sigla === state });
+
+        if (stateCities)
+            setCities(stateCities.cidades);
+    }
 
     return (
         <>
@@ -322,7 +329,7 @@ const NewCustomer: NextPage = () => {
                                                                 type="text"
                                                                 placeholder="00000000"
                                                                 autoComplete="off"
-                                                                onChange={(e) => {
+                                                                onChange={e => {
                                                                     handleChange(e);
 
                                                                     if (e.target.value !== '' && e.target.value.length === 8) {
@@ -331,10 +338,7 @@ const NewCustomer: NextPage = () => {
                                                                             .then((cep: CEP) => {
                                                                                 const { street, neighborhood, city, state } = cep;
 
-                                                                                const stateCities = statesCities.estados.find(item => { return item.sigla === state })
-
-                                                                                if (stateCities)
-                                                                                    setCities(stateCities.cidades);
+                                                                                handleCities(state);
 
                                                                                 setFieldValue('street', street);
                                                                                 setFieldValue('neighborhood', neighborhood);
@@ -431,10 +435,8 @@ const NewCustomer: NextPage = () => {
                                                                 as="select"
                                                                 onChange={(e) => {
                                                                     setFieldValue('state', e.target.value);
-                                                                    const stateCities = statesCities.estados.find(item => { return item.sigla === e.target.value })
 
-                                                                    if (stateCities)
-                                                                        setCities(stateCities.cidades);
+                                                                    handleCities(e.target.value);
                                                                 }}
                                                                 onBlur={handleBlur}
                                                                 value={values.state ? values.state : '...'}

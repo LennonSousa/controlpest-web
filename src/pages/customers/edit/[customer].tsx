@@ -82,10 +82,7 @@ const EditCustomer: NextPage = () => {
                         setDocumentType("CNPJ");
 
                     try {
-                        const stateCities = statesCities.estados.find(item => { return item.sigla === res.data.state })
-
-                        if (stateCities)
-                            setCities(stateCities.cidades);
+                        handleCities(customerRes.state);
                     }
                     catch { }
 
@@ -111,6 +108,13 @@ const EditCustomer: NextPage = () => {
             }
         }
     }, [user, customer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function handleCities(state: string) {
+        const stateCities = statesCities.estados.find(item => { return item.sigla === state });
+
+        if (stateCities)
+            setCities(stateCities.cidades);
+    }
 
     async function handleItemDelete() {
         if (user && customer) {
@@ -384,7 +388,7 @@ const EditCustomer: NextPage = () => {
                                                                                     type="text"
                                                                                     placeholder="00000000"
                                                                                     autoComplete="off"
-                                                                                    onChange={(e) => {
+                                                                                    onChange={e => {
                                                                                         handleChange(e);
 
                                                                                         if (e.target.value !== '' && e.target.value.length === 8) {
@@ -393,10 +397,7 @@ const EditCustomer: NextPage = () => {
                                                                                                 .then((cep: CEP) => {
                                                                                                     const { street, neighborhood, city, state } = cep;
 
-                                                                                                    const stateCities = statesCities.estados.find(item => { return item.sigla === state })
-
-                                                                                                    if (stateCities)
-                                                                                                        setCities(stateCities.cidades);
+                                                                                                    handleCities(state);
 
                                                                                                     setFieldValue('street', street);
                                                                                                     setFieldValue('neighborhood', neighborhood);
@@ -492,10 +493,8 @@ const EditCustomer: NextPage = () => {
                                                                                 <Form.Select
                                                                                     onChange={(e) => {
                                                                                         setFieldValue('state', e.currentTarget.value);
-                                                                                        const stateCities = statesCities.estados.find(item => { return item.sigla === e.currentTarget.value })
 
-                                                                                        if (stateCities)
-                                                                                            setCities(stateCities.cidades);
+                                                                                        handleCities(e.currentTarget.value);
                                                                                     }}
                                                                                     onBlur={handleBlur}
                                                                                     value={values.state ? values.state : '...'}

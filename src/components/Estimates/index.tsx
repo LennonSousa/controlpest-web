@@ -28,3 +28,34 @@ export interface Estimate {
     status: EstimateStatus;
     items: EstimateItem[];
 }
+
+export function calcSubTotal(listItems: EstimateItem[]) {
+    let newSubTotal = 0;
+
+    listItems.forEach(item => {
+        const totalItem = Number(item.amount) * Number(item.price);
+
+        newSubTotal = Number(newSubTotal) + Number(totalItem);
+    });
+
+    return newSubTotal;
+}
+
+export function calcFinalTotal(subTotal: number, isDiscountPercent: boolean, discountValue: number, isIncreasePercent: boolean, increaseValue: number) {
+    // Discount and increase.
+    let finalPrice = subTotal;
+
+    //console.log('subTotal: ', subTotal, ' discountpercent: ', isDiscountPercent, ' discount: ', discountValue, ' increase percent: ', isIncreasePercent, ' increase: ', increaseValue);
+
+    if (isDiscountPercent) finalPrice = subTotal - (subTotal * discountValue / 100);
+    else finalPrice = subTotal - discountValue;
+
+    if (increaseValue > 0) {
+        if (isIncreasePercent) finalPrice = finalPrice + (finalPrice * increaseValue / 100);
+        else finalPrice = finalPrice + increaseValue;
+    }
+
+    //console.log('finalPrice: ', finalPrice);
+
+    return finalPrice;
+}

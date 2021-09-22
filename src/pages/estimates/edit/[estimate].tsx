@@ -1,11 +1,13 @@
 import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
+import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
+import { Button, Col, Container, Form, FormControl, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { FaCashRegister, FaClipboardList, FaCopy, FaMoneyBillWave, FaUserTie, FaPlug, FaSolarPanel } from 'react-icons/fa';
+import { format } from 'date-fns';
+import { FaCashRegister, FaClipboardList, FaMoneyBillWave, FaUserTie, FaPlus, FaSearchPlus } from 'react-icons/fa';
 import cep, { CEP } from 'cep-promise';
 
 import api from '../../../api/api';
@@ -13,68 +15,42 @@ import { TokenVerify } from '../../../utils/tokenVerify';
 import { SideBarContext } from '../../../contexts/SideBarContext';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { can } from '../../../components/Users';
-import { Estimate } from '../../../components/Estimates';
-import { Panel } from '../../../components/Panels';
-import { RoofOrientation } from '../../../components/RoofOrientations';
-import { RoofType } from '../../../components/RoofTypes';
+import { Customer } from '../../../components/Customers';
+import { Estimate, calcSubTotal, calcFinalTotal } from '../../../components/Estimates';
 import { EstimateStatus } from '../../../components/EstimateStatus';
 import EstimateItems, { EstimateItem } from '../../../components/EstimateItems';
+import { Service } from '../../../components/Services';
 
-import Members from '../../../components/EstimateMembers';
-import { cpf, cnpj, cellphone } from '../../../components/InputMask/masks';
 import { statesCities } from '../../../components/StatesCities';
 import PageBack from '../../../components/PageBack';
 import { PageWaiting, PageType } from '../../../components/PageWaiting';
 import { AlertMessage, statusModal } from '../../../components/Interfaces/AlertMessage';
 import { prettifyCurrency } from '../../../components/InputMask/masks';
-import { calculate, CalcProps } from '../../../utils/calcEstimate';
+import SearchCustomers from '../../../components/Interfaces/SearchCustomers';
+import NewEstimateItem from '../../../components/EstimateItems/New';
 
 const validationSchema = Yup.object().shape({
-    customer: Yup.string().required('Obrigatório!'),
-    document: Yup.string().min(14, 'CPF inválido!').max(18, 'CNPJ inválido!').required('Obrigatório!'),
-    phone: Yup.string().notRequired(),
-    cellphone: Yup.string().notRequired().nullable(),
-    contacts: Yup.string().notRequired().nullable(),
-    email: Yup.string().email('E-mail inválido!').notRequired().nullable(),
+    same_address: Yup.boolean().required('Obrigatório!'),
     zip_code: Yup.string().notRequired().min(8, 'Deve conter no mínimo 8 caracteres!').max(8, 'Deve conter no máximo 8 caracteres!'),
-    street: Yup.string().notRequired(),
-    number: Yup.string().notRequired(),
-    neighborhood: Yup.string().notRequired(),
+    street: Yup.string().required('Obrigatório!'),
+    number: Yup.string().required('Obrigatório!'),
+    neighborhood: Yup.string().required('Obrigatório!'),
     complement: Yup.string().notRequired().nullable(),
     city: Yup.string().required('Obrigatório!'),
     state: Yup.string().required('Obrigatório!'),
-    energy_company: Yup.string().notRequired(),
-    unity: Yup.string().notRequired(),
-    kwh: Yup.string().required('Obrigatório!'),
-    irradiation: Yup.string().required('Obrigatório!'),
-    month_01: Yup.string().required('Obrigatório!'),
-    month_02: Yup.string().required('Obrigatório!'),
-    month_03: Yup.string().required('Obrigatório!'),
-    month_04: Yup.string().required('Obrigatório!'),
-    month_05: Yup.string().required('Obrigatório!'),
-    month_06: Yup.string().required('Obrigatório!'),
-    month_07: Yup.string().required('Obrigatório!'),
-    month_08: Yup.string().required('Obrigatório!'),
-    month_09: Yup.string().required('Obrigatório!'),
-    month_10: Yup.string().required('Obrigatório!'),
-    month_11: Yup.string().required('Obrigatório!'),
-    month_12: Yup.string().required('Obrigatório!'),
-    month_13: Yup.string().required('Obrigatório!'),
-    average_increase: Yup.string().required('Obrigatório!'),
+    discount_percent: Yup.boolean().notRequired(),
     discount: Yup.string().required('Obrigatório!'),
+    increase_percent: Yup.boolean().notRequired(),
     increase: Yup.string().required('Obrigatório!'),
-    percent: Yup.boolean().notRequired(),
-    show_values: Yup.boolean().notRequired(),
-    show_discount: Yup.boolean().notRequired(),
+    payment: Yup.string().notRequired().nullable(),
+    expire_at: Yup.date().required('Obrigatório!'),
+    finish_at: Yup.date().required('Obrigatório!'),
     notes: Yup.string().notRequired().nullable(),
     user: Yup.string().notRequired().nullable(),
-    panel: Yup.string().required('Obrigatório!'),
-    roof_orientation: Yup.string().required('Obrigatório!'),
-    roof_type: Yup.string().required('Obrigatório!'),
     status: Yup.string().required('Obrigatório!'),
 });
 
-export default function EditEstimate() {
+const EditEstimate: NextPage = () => {
     const router = useRouter();
     const { estimate } = router.query;
 
@@ -83,16 +59,19 @@ export default function EditEstimate() {
 
     const [data, setData] = useState<Estimate>();
 
-    const [panels, setPanels] = useState<Panel[]>([]);
-    const [roofOrientations, setRoofOrientations] = useState<RoofOrientation[]>([]);
-    const [roofTypes, setRoofTypes] = useState<RoofType[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer>();
+    const [errorSelectedCustomer, setErrorSelectedCustomer] = useState(false);
+
     const [estimateStatusList, setEstimateStatusList] = useState<EstimateStatus[]>([]);
     const [estimateItemsList, setEstimateItemsList] = useState<EstimateItem[]>([]);
+    const [servicesList, setServicesList] = useState<Service[]>([]);
+
+    const [itemsToDelete, setItemsToDelete] = useState<String[]>([]);
+    const [itemsToUpdate, setItemsToUpdate] = useState<String[]>([]);
 
     const [spinnerCep, setSpinnerCep] = useState(false);
     const [messageShow, setMessageShow] = useState(false);
     const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
-    const [documentType, setDocumentType] = useState("CPF");
     const [cities, setCities] = useState<string[]>([]);
 
     const [loadingData, setLoadingData] = useState(true);
@@ -100,30 +79,24 @@ export default function EditEstimate() {
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
 
-    // Values calc result.
-    const [resultMonthsAverageKwh, setResultMonthsAverageKwh] = useState(0);
-    const [resultFinalAverageKwh, setResultFinalAverageKwh] = useState(0);
-    const [resultMonthlyPaid, setResultMonthlyPaid] = useState(0);
-    const [resultYearlyPaid, setResultYearlyPaid] = useState(0);
-
-    const [resultPanelsAmount, setResultPanelsAmount] = useState(0);
-
-    const [resultSystemCapacityKwp, setResultSystemCapacityKwp] = useState(0);
-
-    const [resultMonthlyGeneratedEnergy, setResultMonthlyGeneratedEnergy] = useState(0);
-    const [resultYearlyGeneratedEnergy, setResultYearlyGeneratedEnergy] = useState(0);
-    const [resultCo2Reduction, setResultCo2Reduction] = useState(0);
-
-    const [resultSystemArea, setResultSystemArea] = useState(0);
-    const [resultFinalSystemCapacityKwp, setResultFinalSystemCapacityKwp] = useState(0);
-
-    const [resultPreSystemPrice, setResultPreSystemPrice] = useState(0);
-
-    const [resultFinalSystemPrice, setResultFinalSystemPrice] = useState(0);
-
-    const [valuesCalc, setValuesCalc] = useState<CalcProps>();
+    const [subTotal, setSubTotal] = useState(0);
+    const [discountPercent, setDiscountPercent] = useState(true);
+    const [discount, setDiscount] = useState(0);
+    const [increasePercent, setIncreasePercent] = useState(true);
+    const [increase, setIncrease] = useState(0);
+    const [finalTotal, setFinalTotal] = useState(0);
 
     const [deletingMessageShow, setDeletingMessageShow] = useState(false);
+
+    const [showSearchModal, setShowSearchModal] = useState(false);
+
+    const handleCloseSearchModal = () => setShowSearchModal(false);
+    const handleShowSearchModal = () => setShowSearchModal(true);
+
+    const [showNewEstimateItemModal, setShowNewEstimateItemModal] = useState(false);
+
+    const handleCloseNewEstimateItemModal = () => setShowNewEstimateItemModal(false);
+    const handleShowNewEstimateItemModal = () => setShowNewEstimateItemModal(true);
 
     const [showItemDelete, setShowItemDelete] = useState(false);
 
@@ -139,8 +112,25 @@ export default function EditEstimate() {
                 api.get(`estimates/${estimate}`).then(res => {
                     let estimateRes: Estimate = res.data;
 
-                    if (estimateRes.document.length > 14)
-                        setDocumentType("CNPJ");
+                    setSelectedCustomer(estimateRes.customer);
+
+                    setEstimateItemsList(estimateRes.items);
+
+                    const discounValue = Number(estimateRes.discount);
+                    const increaseValue = Number(estimateRes.increase);
+
+                    setDiscountPercent(estimateRes.discount_percent);
+                    setDiscount(discounValue);
+                    setIncreasePercent(estimateRes.increase_percent);
+                    setIncrease(increaseValue);
+
+                    handleSubTotal(
+                        estimateRes.items,
+                        estimateRes.discount_percent,
+                        discounValue,
+                        estimateRes.increase_percent,
+                        increaseValue
+                    );
 
                     try {
                         const stateCities = statesCities.estados.find(item => { return item.sigla === res.data.state })
@@ -150,42 +140,22 @@ export default function EditEstimate() {
                     }
                     catch { }
 
-                    api.get('panels').then(res => {
-                        setPanels(res.data);
-                    }).catch(err => {
-                        console.log('Error to get panels, ', err);
-
-                        setTypeLoadingMessage("error");
-                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
-                        setHasErrors(true);
-                    });
-
-                    api.get('roofs/orientations').then(res => {
-                        setRoofOrientations(res.data);
-                    }).catch(err => {
-                        console.log('Error to get roofs orientations, ', err);
-
-                        setTypeLoadingMessage("error");
-                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
-                        setHasErrors(true);
-                    });
-
-                    api.get('roofs/types').then(res => {
-                        setRoofTypes(res.data);
-                    }).catch(err => {
-                        console.log('Error to get roofs types, ', err);
-
-                        setTypeLoadingMessage("error");
-                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
-                        setHasErrors(true);
-                    });
-
                     api.get('estimates/status').then(res => {
                         setEstimateStatusList(res.data);
+                    }).catch(err => {
+                        console.log('Error to get estimates status, ', err);
+
+                        setTypeLoadingMessage("error");
+                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
+                        setHasErrors(true);
+                    });
+
+                    api.get('services').then(res => {
+                        setServicesList(res.data);
 
                         setLoadingData(false);
                     }).catch(err => {
-                        console.log('Error to get estimates status, ', err);
+                        console.log('Error to get services, ', err);
 
                         setTypeLoadingMessage("error");
                         setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
@@ -205,122 +175,113 @@ export default function EditEstimate() {
 
     }, [user, estimate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+
     useEffect(() => {
-        if (data) {
-            const values: CalcProps = {
-                kwh: data.kwh,
-                irradiation: data.irradiation,
-                panel: data.panel,
-                month_01: data.month_01,
-                month_02: data.month_02,
-                month_03: data.month_03,
-                month_04: data.month_04,
-                month_05: data.month_05,
-                month_06: data.month_06,
-                month_07: data.month_07,
-                month_08: data.month_08,
-                month_09: data.month_09,
-                month_10: data.month_10,
-                month_11: data.month_11,
-                month_12: data.month_12,
-                month_13: data.month_13,
-                averageIncrease: data.average_increase,
-                roofOrientation: data.roof_orientation,
-                discount: data.discount,
-                increase: data.increase,
-                percent: data.percent,
-                estimateItems: data.items,
+        if (selectedCustomer) {
+            handleCities(selectedCustomer.state);
+        }
+    }, [selectedCustomer]);
+
+    function handleCustomer(customer: Customer) {
+        setSelectedCustomer(customer);
+
+        setErrorSelectedCustomer(false);
+        handleCloseSearchModal();
+    }
+
+    function handleCities(state: string) {
+        const stateCities = statesCities.estados.find(item => { return item.sigla === state });
+
+        if (stateCities)
+            setCities(stateCities.cidades);
+    }
+
+    async function handleNewItemToList(newItem: EstimateItem) {
+        const updatedListItems = [...estimateItemsList, newItem];
+
+        setEstimateItemsList(updatedListItems);
+
+        handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
+    }
+
+    async function handleListItems(updatedNewItem?: EstimateItem, toDelete?: boolean) {
+        if (updatedNewItem) {
+            let updatedListItems = estimateItemsList;
+
+            if (toDelete) {
+                updatedListItems = updatedListItems.filter(item => {
+                    return item.id !== updatedNewItem.id;
+                });
+
+                if (!updatedNewItem.id.startsWith('@')) {
+                    setItemsToDelete([...itemsToDelete, updatedNewItem.id]);
+
+                    setItemsToUpdate(itemsToUpdate.filter(id => {
+                        return id !== updatedNewItem.id;
+                    }))
+                }
+
+                let idsToUpdate: String[] = [];
+
+                updatedListItems = updatedListItems.map((item, index) => {
+                    if (item.id.startsWith('@')) {
+                        return {
+                            ...item,
+                            id: `@${index}`,
+                            order: index,
+                        };
+                    }
+
+                    idsToUpdate.push(item.id);
+
+                    return {
+                        ...item,
+                        order: index,
+                    }
+                });
+
+                setEstimateItemsList(updatedListItems);
+
+                setItemsToUpdate(idsToUpdate);
+
+                handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
+
+                return;
             }
 
-            setValuesCalc(values);
+            updatedListItems = updatedListItems.map(item => {
+                if (item.id === updatedNewItem.id) return updatedNewItem;
 
-            handleCalcEstimate(values, false);
-        }
-    }, [data]);
-
-    function handleCalcEstimate(values: CalcProps, updatedInversor: boolean) {
-        const calcResults = calculate(values, updatedInversor);
-
-        if (calcResults) {
-            setResultMonthsAverageKwh(calcResults.monthsAverageKwh);
-            setResultFinalAverageKwh(calcResults.finalAverageKwh);
-            setResultMonthlyPaid(calcResults.monthlyPaid);
-            setResultYearlyPaid(calcResults.yearlyPaid);
-
-            setResultSystemCapacityKwp(calcResults.systemCapacityKwp);
-
-            setResultMonthlyGeneratedEnergy(calcResults.monthlyGeneratedEnergy);
-            setResultYearlyGeneratedEnergy(calcResults.yearlyGeneratedEnergy);
-            setResultCo2Reduction(calcResults.co2Reduction);
-
-            setResultSystemArea(calcResults.systemArea);
-            setResultFinalSystemCapacityKwp(calcResults.finalSystemCapacityKwp);
-
-            setResultPreSystemPrice(calcResults.systemInitialPrice);
-            setResultFinalSystemPrice(calcResults.finalSystemPrice);
-
-            calcResults.estimateItems.forEach(item => {
-                if (item.order === 1) setResultPanelsAmount(item.amount);
+                return item;
             });
 
-            setEstimateItemsList(calcResults.estimateItems);
+            if (!updatedNewItem.id.startsWith('@')) setItemsToUpdate([...itemsToUpdate, updatedNewItem.id]);
+
+            setEstimateItemsList(updatedListItems);
+
+            handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
         }
     }
 
-    function handleFormValues(values: any) {
-        try {
-            const panel = panels.find(panel => { return panel.id === values['panel'] });
-            const roofOrientation = roofOrientations.find(roofOrientation => { return roofOrientation.id === values['roof_orientation'] });
+    function handleSubTotal(
+        listItems: EstimateItem[],
+        isDiscountPercent: boolean,
+        discountValue: number,
+        isIncreasePercent: boolean,
+        increaseValue: number
+    ) {
+        const newSubTotal = calcSubTotal(listItems);
 
-            if (!panel || !roofOrientation) return undefined;
+        setSubTotal(newSubTotal);
 
-            const valuesCalcItem: CalcProps = {
-                kwh: values['kwh'].replaceAll('.', '').replaceAll(',', '.'),
-                irradiation: values['irradiation'].replaceAll('.', '').replaceAll(',', '.'),
-                panel,
-                month_01: values['month_01'].replaceAll('.', '').replaceAll(',', '.'),
-                month_02: values['month_02'].replaceAll('.', '').replaceAll(',', '.'),
-                month_03: values['month_03'].replaceAll('.', '').replaceAll(',', '.'),
-                month_04: values['month_04'].replaceAll('.', '').replaceAll(',', '.'),
-                month_05: values['month_05'].replaceAll('.', '').replaceAll(',', '.'),
-                month_06: values['month_06'].replaceAll('.', '').replaceAll(',', '.'),
-                month_07: values['month_07'].replaceAll('.', '').replaceAll(',', '.'),
-                month_08: values['month_08'].replaceAll('.', '').replaceAll(',', '.'),
-                month_09: values['month_09'].replaceAll('.', '').replaceAll(',', '.'),
-                month_10: values['month_10'].replaceAll('.', '').replaceAll(',', '.'),
-                month_11: values['month_11'].replaceAll('.', '').replaceAll(',', '.'),
-                month_12: values['month_12'].replaceAll('.', '').replaceAll(',', '.'),
-                month_13: values['month_13'].replaceAll('.', '').replaceAll(',', '.'),
-                averageIncrease: values['average_increase'].replaceAll('.', '').replaceAll(',', '.'),
-                roofOrientation: roofOrientation,
-                discount: values['discount'].replaceAll('.', '').replaceAll(',', '.'),
-                increase: values['increase'].replaceAll('.', '').replaceAll(',', '.'),
-                percent: values['percent'],
-                estimateItems: estimateItemsList,
-            }
-
-            setValuesCalc(valuesCalcItem);
-
-            return valuesCalcItem;
-        }
-        catch {
-            return undefined;
-        }
+        handleFinalTotal(newSubTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
     }
 
-    function handleListEstimateItems(estimateItemsList: EstimateItem[]) {
-        setEstimateItemsList(estimateItemsList);
+    function handleFinalTotal(subTotal: number, isDiscountPercent: boolean, discountValue: number, isIncreasePercent: boolean, increaseValue: number) {
+        // Discount and increase.
+        const finalPrice = calcFinalTotal(subTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
 
-        if (valuesCalc) {
-            const updatedValuesCalc = {
-                ...valuesCalc,
-                estimateItems: estimateItemsList,
-            };
-
-            setValuesCalc(updatedValuesCalc);
-
-            handleCalcEstimate(updatedValuesCalc, false);
-        }
+        setFinalTotal(finalPrice);
     }
 
     async function handleItemDelete() {
@@ -356,17 +317,17 @@ export default function EditEstimate() {
         <>
             <NextSeo
                 title="Editar orçamento"
-                description="Editar orçamento da plataforma de gerenciamento da Mtech Solar."
+                description={`Editar orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
                 openGraph={{
-                    url: 'https://app.mtechsolar.com.br',
+                    url: process.env.NEXT_PUBLIC_APP_URL,
                     title: 'Editar orçamento',
-                    description: 'Editar orçamento da plataforma de gerenciamento da Mtech Solar.',
+                    description: `Editar orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                     images: [
                         {
-                            url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg',
-                            alt: 'Editar orçamento | Plataforma Mtech Solar',
+                            url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg`,
+                            alt: `Editar orçamento | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                         },
-                        { url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg' },
+                        { url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg` },
                     ],
                 }}
             />
@@ -391,132 +352,91 @@ export default function EditEstimate() {
                                                             </Col>
                                                         </Row>
 
-                                                        <Row className="mb-3">
-                                                            <Col>
-                                                                <Row>
-                                                                    <Col>
-                                                                        <h6 className="text-success">Vendedor</h6>
-                                                                    </Col>
-                                                                </Row>
-                                                                <Row>
-                                                                    <Members user={user} />
-                                                                </Row>
-                                                            </Col>
-                                                        </Row>
-
                                                         <Formik
                                                             initialValues={{
-                                                                customer: data.customer,
-                                                                document: data.document,
-                                                                phone: data.phone,
-                                                                cellphone: data.cellphone,
-                                                                contacts: data.contacts,
-                                                                email: data.email,
-                                                                zip_code: data.zip_code,
-                                                                street: data.street,
-                                                                number: data.number,
-                                                                neighborhood: data.neighborhood,
-                                                                complement: data.complement,
-                                                                city: data.city,
-                                                                state: data.state,
-                                                                energy_company: data.energy_company,
-                                                                unity: data.unity,
-                                                                kwh: prettifyCurrency(String(data.kwh)),
-                                                                irradiation: prettifyCurrency(String(data.irradiation)),
-                                                                month_01: prettifyCurrency(String(data.month_01)),
-                                                                month_02: prettifyCurrency(String(data.month_02)),
-                                                                month_03: prettifyCurrency(String(data.month_03)),
-                                                                month_04: prettifyCurrency(String(data.month_04)),
-                                                                month_05: prettifyCurrency(String(data.month_05)),
-                                                                month_06: prettifyCurrency(String(data.month_06)),
-                                                                month_07: prettifyCurrency(String(data.month_07)),
-                                                                month_08: prettifyCurrency(String(data.month_08)),
-                                                                month_09: prettifyCurrency(String(data.month_09)),
-                                                                month_10: prettifyCurrency(String(data.month_10)),
-                                                                month_11: prettifyCurrency(String(data.month_11)),
-                                                                month_12: prettifyCurrency(String(data.month_12)),
-                                                                month_13: prettifyCurrency(String(data.month_13)),
-                                                                average_increase: prettifyCurrency(String(data.average_increase)),
+                                                                same_address: data.same_address,
+                                                                zip_code: data.same_address ? data.customer.zip_code : data.zip_code,
+                                                                street: data.same_address ? data.customer.street : data.street,
+                                                                number: data.same_address ? data.customer.number : data.number,
+                                                                neighborhood: data.same_address ? data.customer.neighborhood : data.neighborhood,
+                                                                complement: data.same_address ? data.customer.complement : data.complement,
+                                                                city: data.same_address ? data.customer.city : data.city,
+                                                                state: data.same_address ? data.customer.state : data.state,
+                                                                discount_percent: data.discount_percent,
                                                                 discount: prettifyCurrency(String(data.discount)),
+                                                                increase_percent: data.increase_percent,
                                                                 increase: prettifyCurrency(String(data.increase)),
-                                                                percent: data.percent,
-                                                                show_values: data.show_values,
-                                                                show_discount: data.show_discount,
+                                                                payment: data.payment,
+                                                                expire_at: format(new Date(data.expire_at), 'yyyy-MM-dd'),
+                                                                finish_at: format(new Date(data.finish_at), 'yyyy-MM-dd'),
                                                                 notes: data.notes,
-                                                                user: user.id,
-                                                                panel: data.panel.id,
-                                                                roof_orientation: data.roof_orientation.id,
-                                                                roof_type: data.roof_type.id,
                                                                 status: data.status.id,
                                                             }}
                                                             onSubmit={async values => {
+                                                                if (!selectedCustomer) {
+                                                                    setErrorSelectedCustomer(true);
+                                                                    return;
+                                                                }
+
                                                                 setTypeMessage("waiting");
                                                                 setMessageShow(true);
 
-                                                                const valuesCalcItem = handleFormValues(values);
-
                                                                 try {
-                                                                    if (valuesCalcItem) {
-                                                                        await api.put(`estimates/${data.id}`, {
-                                                                            customer: values.customer,
-                                                                            document: values.document,
-                                                                            phone: values.phone,
-                                                                            cellphone: values.cellphone,
-                                                                            contacts: values.contacts,
-                                                                            email: values.email,
-                                                                            zip_code: values.zip_code,
-                                                                            street: values.street,
-                                                                            number: values.number,
-                                                                            neighborhood: values.neighborhood,
-                                                                            complement: values.complement,
-                                                                            city: values.city,
-                                                                            state: values.state,
-                                                                            energy_company: values.energy_company,
-                                                                            unity: values.unity,
-                                                                            kwh: valuesCalcItem.kwh,
-                                                                            irradiation: valuesCalcItem.irradiation,
-                                                                            month_01: valuesCalcItem.month_01,
-                                                                            month_02: valuesCalcItem.month_02,
-                                                                            month_03: valuesCalcItem.month_03,
-                                                                            month_04: valuesCalcItem.month_04,
-                                                                            month_05: valuesCalcItem.month_05,
-                                                                            month_06: valuesCalcItem.month_06,
-                                                                            month_07: valuesCalcItem.month_07,
-                                                                            month_08: valuesCalcItem.month_08,
-                                                                            month_09: valuesCalcItem.month_09,
-                                                                            month_10: valuesCalcItem.month_10,
-                                                                            month_11: valuesCalcItem.month_11,
-                                                                            month_12: valuesCalcItem.month_12,
-                                                                            month_13: valuesCalcItem.month_13,
-                                                                            average_increase: valuesCalcItem.averageIncrease,
-                                                                            discount: valuesCalcItem.discount,
-                                                                            increase: valuesCalcItem.increase,
-                                                                            percent: values.percent,
-                                                                            show_values: values.show_values,
-                                                                            show_discount: values.show_discount,
-                                                                            notes: values.notes,
-                                                                            panel: values.panel,
-                                                                            roof_orientation: values.roof_orientation,
-                                                                            roof_type: values.roof_type,
-                                                                            status: values.status,
-                                                                        });
+                                                                    await api.put(`estimates/${data.id}`, {
+                                                                        same_address: values.same_address,
+                                                                        zip_code: values.zip_code,
+                                                                        street: values.street,
+                                                                        number: values.number,
+                                                                        neighborhood: values.neighborhood,
+                                                                        complement: values.complement,
+                                                                        city: values.city,
+                                                                        state: values.state,
+                                                                        discount_percent: values.discount_percent,
+                                                                        discount: Number(values.discount.replaceAll(".", "").replaceAll(",", ".")),
+                                                                        increase_percent: values.increase_percent,
+                                                                        increase: Number(values.increase.replaceAll(".", "").replaceAll(",", ".")),
+                                                                        payment: values.payment,
+                                                                        expire_at: `${values.expire_at} 12:00:00`,
+                                                                        finish_at: `${values.finish_at} 12:00:00`,
+                                                                        notes: values.notes,
+                                                                        customer: selectedCustomer.id,
+                                                                        status: values.status,
+                                                                    });
 
-                                                                        estimateItemsList.forEach(async item => {
-                                                                            await api.put(`estimates/items/${item.id}`, {
+                                                                    itemsToDelete.forEach(async item => {
+                                                                        await api.delete(`estimates/items/${item}`);
+                                                                    });
+
+                                                                    estimateItemsList.forEach(async item => {
+                                                                        if (item.id.startsWith('@')) {
+                                                                            await api.post('estimates/items', {
                                                                                 name: item.name,
-                                                                                amount: item.amount,
+                                                                                details: item.details,
                                                                                 price: item.price,
-                                                                                percent: item.percent,
+                                                                                amount: item.amount,
+                                                                                order: item.order,
+                                                                                estimate: data.id,
+                                                                            });
+                                                                            return
+                                                                        }
+
+                                                                        if (itemsToUpdate.find(id => { return id === item.id })) {
+                                                                            await api.put(`estimates/items/${item.id}`, {
+                                                                                ...item,
+                                                                                name: item.name,
+                                                                                details: item.details,
+                                                                                price: item.price,
+                                                                                amount: item.amount,
                                                                                 order: item.order,
                                                                             });
-                                                                        });
+                                                                        }
+                                                                    });
 
-                                                                        setTypeMessage("success");
+                                                                    setTypeMessage("success");
 
-                                                                        setTimeout(() => {
-                                                                            router.push(`/estimates/details/${data.id}`)
-                                                                        }, 1000);
-                                                                    }
+                                                                    setTimeout(() => {
+                                                                        router.push(`/estimates/details/${data.id}`)
+                                                                    }, 1000);
                                                                 }
                                                                 catch {
                                                                     setTypeMessage("error");
@@ -527,10 +447,10 @@ export default function EditEstimate() {
                                                                 }
                                                             }}
                                                             validationSchema={validationSchema}
+                                                            enableReinitialize
                                                         >
-                                                            {({ handleChange, handleBlur, handleSubmit, setFieldValue, setValues, values, errors, touched }) => (
+                                                            {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched }) => (
                                                                 <Form onSubmit={handleSubmit}>
-
                                                                     <Row className="mb-3">
                                                                         <Col>
                                                                             <Row>
@@ -542,1116 +462,467 @@ export default function EditEstimate() {
                                                                     </Row>
 
                                                                     <Row className="mb-3">
-                                                                        <Form.Group as={Col} sm={8} controlId="formGridName">
-                                                                            <Form.Label>Nome do cliente*</Form.Label>
-                                                                            <Form.Control
-                                                                                type="name"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.customer}
-                                                                                name="customer"
-                                                                                isInvalid={!!errors.customer && touched.customer}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.customer && errors.customer}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridDocument">
-                                                                            <Form.Label>{documentType}</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                maxLength={18}
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('document', e.target.value.length <= 14 ? cpf(e.target.value) : cnpj(e.target.value), false);
-                                                                                    if (e.target.value.length > 14)
-                                                                                        setDocumentType("CNPJ");
-                                                                                    else
-                                                                                        setDocumentType("CPF");
-                                                                                }}
-                                                                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                    setFieldValue('document', e.target.value.length <= 14 ? cpf(e.target.value) : cnpj(e.target.value));
-                                                                                    if (e.target.value.length > 14)
-                                                                                        setDocumentType("CNPJ");
-                                                                                    else
-                                                                                        setDocumentType("CPF");
-                                                                                }}
-                                                                                value={values.document}
-                                                                                name="document"
-                                                                                isInvalid={!!errors.document && touched.document}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.document && errors.document}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridPhone">
-                                                                            <Form.Label>Celular</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                maxLength={15}
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('phone', cellphone(e.target.value));
-                                                                                }}
-                                                                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                    setFieldValue('phone', cellphone(e.target.value));
-                                                                                }}
-                                                                                value={values.phone}
-                                                                                name="phone"
-                                                                                isInvalid={!!errors.phone && touched.phone}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.phone && errors.phone}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridCellphone">
-                                                                            <Form.Label>Celular secundáiro</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                maxLength={15}
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('cellphone', cellphone(e.target.value));
-                                                                                }}
-                                                                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                    setFieldValue('cellphone', cellphone(e.target.value));
-                                                                                }}
-                                                                                value={values.cellphone}
-                                                                                name="cellphone"
-                                                                                isInvalid={!!errors.cellphone && touched.cellphone}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.cellphone && errors.cellphone}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={6} controlId="formGridEmail">
-                                                                            <Form.Label>E-mail</Form.Label>
-                                                                            <Form.Control
-                                                                                type="email"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.email}
-                                                                                name="email"
-                                                                                isInvalid={!!errors.email && touched.email}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.email && errors.email}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} controlId="formGridContacts">
-                                                                            <Form.Label>Outros contatos</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.contacts}
-                                                                                name="contacts"
-                                                                                isInvalid={!!errors.contacts && touched.contacts}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.contacts && errors.contacts}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} lg={2} md={3} sm={5} controlId="formGridZipCode">
-                                                                            <Form.Label>CEP</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                placeholder="00000000"
-                                                                                autoComplete="off"
-                                                                                onChange={(e) => {
-                                                                                    handleChange(e);
-
-                                                                                    if (e.target.value !== '' && e.target.value.length === 8) {
-                                                                                        setSpinnerCep(true);
-                                                                                        cep(e.target.value)
-                                                                                            .then((cep: CEP) => {
-                                                                                                const { street, neighborhood, city, state } = cep;
-
-                                                                                                const stateCities = statesCities.estados.find(item => { return item.sigla === state })
-
-                                                                                                if (stateCities)
-                                                                                                    setCities(stateCities.cidades);
-
-                                                                                                setFieldValue('street', street);
-                                                                                                setFieldValue('neighborhood', neighborhood);
-                                                                                                setFieldValue('city', city);
-                                                                                                setFieldValue('state', state);
-
-                                                                                                setSpinnerCep(false);
-                                                                                            })
-                                                                                            .catch(() => {
-                                                                                                setSpinnerCep(false);
-                                                                                            });
-                                                                                    }
-                                                                                }}
-                                                                                value={values.zip_code}
-                                                                                name="zip_code"
-                                                                                isInvalid={!!errors.zip_code && touched.zip_code}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.zip_code && errors.zip_code}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Col style={{ display: 'flex', alignItems: 'center' }}>
-                                                                            {
-                                                                                spinnerCep && <Spinner
-                                                                                    as="span"
-                                                                                    animation="border"
-                                                                                    variant="info"
-                                                                                    role="status"
-                                                                                    aria-hidden="true"
+                                                                        <Col sm={6}>
+                                                                            <InputGroup>
+                                                                                <FormControl
+                                                                                    placeholder="Escolha um cliente"
+                                                                                    type="name"
+                                                                                    value={selectedCustomer ? selectedCustomer.name : ''}
+                                                                                    name="customer"
+                                                                                    aria-label="Nome do cliente"
+                                                                                    aria-describedby="btnGroupAddon"
+                                                                                    isInvalid={errorSelectedCustomer}
+                                                                                    readOnly
                                                                                 />
-                                                                            }
-                                                                        </Col>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={10} controlId="formGridStreet">
-                                                                            <Form.Label>Rua</Form.Label>
-                                                                            <Form.Control
-                                                                                type="address"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.street}
-                                                                                name="street"
-                                                                                isInvalid={!!errors.street && touched.street}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.street && errors.street}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={2} controlId="formGridNumber">
-                                                                            <Form.Label>Número</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.number}
-                                                                                name="number"
-                                                                                isInvalid={!!errors.number && touched.number}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.number && errors.number}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} controlId="formGridComplement">
-                                                                            <Form.Label>Complemento</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.complement}
-                                                                                name="complement"
-                                                                                isInvalid={!!errors.complement && touched.complement}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.complement && errors.complement}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={6} controlId="formGridNeighborhood">
-                                                                            <Form.Label>Bairro</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.neighborhood}
-                                                                                name="neighborhood"
-                                                                                isInvalid={!!errors.neighborhood && touched.neighborhood}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.neighborhood && errors.neighborhood}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={2} controlId="formGridState">
-                                                                            <Form.Label>Estado</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('state', e.target.value);
-
-                                                                                    const stateCities = statesCities.estados.find(item => { return item.sigla === e.target.value })
-
-                                                                                    if (stateCities)
-                                                                                        setCities(stateCities.cidades);
-                                                                                }}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.state ? values.state : '...'}
-                                                                                name="state"
-                                                                                isInvalid={!!errors.state && touched.state}
-                                                                            >
-                                                                                <option hidden>...</option>
-                                                                                {
-                                                                                    statesCities.estados.map((estado, index) => {
-                                                                                        return <option key={index} value={estado.sigla}>{estado.nome}</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.state && errors.state}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridCity">
-                                                                            <Form.Label>Cidade</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.city ? values.city : '...'}
-                                                                                name="city"
-                                                                                isInvalid={!!errors.city && touched.city}
-                                                                                disabled={!!!values.state}
-                                                                            >
-                                                                                <option hidden>...</option>
-                                                                                {
-                                                                                    !!values.state && cities.map((city, index) => {
-                                                                                        return <option key={index} value={city}>{city}</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.city && errors.city}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Col className="border-top mt-3 mb-3"></Col>
-
-                                                                    <Row className="mb-3">
-                                                                        <Col>
-                                                                            <Row>
-                                                                                <Col>
-                                                                                    <h6 className="text-success">Consumo <FaPlug /></h6>
-                                                                                </Col>
-                                                                            </Row>
-                                                                        </Col>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridEngeryCompany">
-                                                                            <Form.Label>Concessionária de energia</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.energy_company}
-                                                                                name="energy_company"
-                                                                                isInvalid={!!errors.energy_company && touched.energy_company}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.energy_company && errors.energy_company}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridUnity">
-                                                                            <Form.Label>Unidade consumidora (UC)</Form.Label>
-                                                                            <Form.Control
-                                                                                type="text"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.unity}
-                                                                                name="unity"
-                                                                                isInvalid={!!errors.unity && touched.unity}
-                                                                            />
-                                                                            <Form.Control.Feedback type="invalid">{touched.unity && errors.unity}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridRoofType">
-                                                                            <Form.Label>Tipo de telhado</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.roof_type}
-                                                                                name="roof_type"
-                                                                                isInvalid={!!errors.roof_type && touched.roof_type}
-                                                                            >
-                                                                                <option hidden>Escolha uma opção</option>
-                                                                                {
-                                                                                    roofTypes.map((roofType, index) => {
-                                                                                        return <option key={index} value={roofType.id}>{roofType.name}</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.roof_type && errors.roof_type}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridKwh">
-                                                                            <Form.Label>Valor unitário do Quilowatts/Hora</Form.Label>
-                                                                            <InputGroup className="mb-2">
-                                                                                <InputGroup.Text id="btnGroupKwh">R$</InputGroup.Text>
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('kwh', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('kwh', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.kwh}
-                                                                                    name="kwh"
-                                                                                    isInvalid={!!errors.kwh && touched.kwh}
-                                                                                    aria-label="Valor unitário do Quilowatts/Hora."
-                                                                                    aria-describedby="btnGroupKwh"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.kwh && errors.kwh}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridIrratiation">
-                                                                            <Form.Label>Irradiação Local</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupIrradiation">kWh/m²</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('irradiation', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('irradiation', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.irradiation}
-                                                                                    name="irradiation"
-                                                                                    isInvalid={!!errors.irradiation && touched.irradiation}
-                                                                                    aria-label="Irradiação Local em [kWh/m².dia]."
-                                                                                    aria-describedby="btnGroupIrradiation"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.irradiation && errors.irradiation}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridPanel">
-                                                                            <Form.Label>Painél fotovoltaico (W)</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('panel', e.target.value);
-
-                                                                                    const calcValues = handleFormValues(values);
-
-                                                                                    if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                }}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.panel}
-                                                                                name="panel"
-                                                                                isInvalid={!!errors.panel && touched.panel}
-                                                                            >
-                                                                                <option hidden>Escolha uma opção</option>
-                                                                                {
-                                                                                    panels.map((panel, index) => {
-                                                                                        return <option key={index} value={panel.id}>{
-                                                                                            `${panel.name} - ${prettifyCurrency(String(panel.capacity))} W`
-                                                                                        }</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.panel && errors.panel}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridRoofOrientation">
-                                                                            <Form.Label>Orientação do telhado</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={(e) => {
-                                                                                    setFieldValue('roof_orientation', e.target.value);
-
-                                                                                    const calcValues = handleFormValues(values);
-
-                                                                                    if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                }}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.roof_orientation}
-                                                                                name="roof_orientation"
-                                                                                isInvalid={!!errors.roof_orientation && touched.roof_orientation}
-                                                                            >
-                                                                                <option hidden>Escolha uma opção</option>
-                                                                                {
-                                                                                    roofOrientations.map((orientation, index) => {
-                                                                                        return <option key={index} value={orientation.id}>{orientation.name}</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.roof_orientation && errors.roof_orientation}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth01">
-                                                                            <Form.Label>Mês 01</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth01">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_01', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_01', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_01}
-                                                                                    name="month_01"
-                                                                                    isInvalid={!!errors.month_01 && touched.month_01}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth01"
-                                                                                />
-
                                                                                 <Button
-                                                                                    id="btnGroupMonth01"
+                                                                                    id="btnGroupAddon"
                                                                                     variant="success"
-                                                                                    title="Copiar valor para todos os outros meses."
-                                                                                    onClick={() => {
-                                                                                        const updatedValues = {
-                                                                                            ...values,
-                                                                                            month_02: values.month_01,
-                                                                                            month_03: values.month_01,
-                                                                                            month_04: values.month_01,
-                                                                                            month_05: values.month_01,
-                                                                                            month_06: values.month_01,
-                                                                                            month_07: values.month_01,
-                                                                                            month_08: values.month_01,
-                                                                                            month_09: values.month_01,
-                                                                                            month_10: values.month_01,
-                                                                                            month_11: values.month_01,
-                                                                                            month_12: values.month_01,
-                                                                                            month_13: values.month_01,
-                                                                                        };
-
-                                                                                        setValues(updatedValues);
-
-                                                                                        const calcValues = handleFormValues(updatedValues);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
+                                                                                    onClick={handleShowSearchModal}
                                                                                 >
-                                                                                    <FaCopy />
+                                                                                    <FaSearchPlus />
                                                                                 </Button>
-
                                                                             </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_01 && errors.month_01}</Form.Control.Feedback>
-                                                                        </Form.Group>
+                                                                            <span className="invalid-feedback" style={{ display: 'block' }}>{errorSelectedCustomer && 'Obrigatório!'}</span>
+                                                                        </Col>
 
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth02">
-                                                                            <Form.Label>Mês 02</Form.Label>
-                                                                            <InputGroup className="mb-2">
+                                                                        {
+                                                                            selectedCustomer && <>
+                                                                                <Col sm={4} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">{
+                                                                                                selectedCustomer.document.length > 14 ? "CNPJ" : "CPF"
+                                                                                            }</span>
+                                                                                        </Col>
+                                                                                    </Row>
 
-                                                                                <InputGroup.Text id="btnGroupMonth02">kWh</InputGroup.Text>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.document}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
 
+                                                                                <Col sm={2} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Nascimento</span>
+                                                                                        </Col>
+                                                                                    </Row>
 
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_02', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_02', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_02}
-                                                                                    name="month_02"
-                                                                                    isInvalid={!!errors.month_02 && touched.month_02}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth02"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_02 && errors.month_02}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth03">
-                                                                            <Form.Label>Mês 03</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth03">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_03', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_03', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_03}
-                                                                                    name="month_03"
-                                                                                    isInvalid={!!errors.month_03 && touched.month_03}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth03"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_03 && errors.month_03}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth04">
-                                                                            <Form.Label>Mês 04</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth04">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_04', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_04', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_04}
-                                                                                    name="month_04"
-                                                                                    isInvalid={!!errors.month_04 && touched.month_04}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth04"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_04 && errors.month_04}</Form.Control.Feedback>
-                                                                        </Form.Group>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{format(new Date(selectedCustomer.birth), 'dd/MM/yyyy')}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </>
+                                                                        }
                                                                     </Row>
 
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth05">
-                                                                            <Form.Label>Mês 05</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth05">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_05', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_05', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_05}
-                                                                                    name="month_05"
-                                                                                    isInvalid={!!errors.month_05 && touched.month_05}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth05"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_05 && errors.month_05}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth06">
-                                                                            <Form.Label>Mês 06</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth06">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_06', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_06', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_06}
-                                                                                    name="month_06"
-                                                                                    isInvalid={!!errors.month_06 && touched.month_06}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth06"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_06 && errors.month_06}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth07">
-                                                                            <Form.Label>Mês 07</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth07">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_07', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_07', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_07}
-                                                                                    name="month_07"
-                                                                                    isInvalid={!!errors.month_07 && touched.month_07}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth07"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_07 && errors.month_07}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth08">
-                                                                            <Form.Label>Mês 08</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth08">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_08', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_08', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_08}
-                                                                                    name="month_08"
-                                                                                    isInvalid={!!errors.month_08 && touched.month_08}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth08"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_08 && errors.month_08}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth09">
-                                                                            <Form.Label>Mês 09</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth09">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_09', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_09', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_09}
-                                                                                    name="month_09"
-                                                                                    isInvalid={!!errors.month_09 && touched.month_09}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth09"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_09 && errors.month_09}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth10">
-                                                                            <Form.Label>Mês 10</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth10">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_10', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_10', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_10}
-                                                                                    name="month_10"
-                                                                                    isInvalid={!!errors.month_10 && touched.month_10}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth10"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_10 && errors.month_10}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth11">
-                                                                            <Form.Label>Mês 11</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth11">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_11', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_11', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_11}
-                                                                                    name="month_11"
-                                                                                    isInvalid={!!errors.month_11 && touched.month_11}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth11"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_11 && errors.month_11}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth12">
-                                                                            <Form.Label>Mês 12</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth12">kWh</InputGroup.Text>
-
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_12', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_12', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_12}
-                                                                                    name="month_12"
-                                                                                    isInvalid={!!errors.month_12 && touched.month_12}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth12"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_12 && errors.month_12}</Form.Control.Feedback>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonth13">
-                                                                            <Form.Label>Mês 13</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonth13">kWh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('month_13', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('month_13', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.month_13}
-                                                                                    name="month_13"
-                                                                                    isInvalid={!!errors.month_13 && touched.month_13}
-                                                                                    aria-label="Consumo em kWh"
-                                                                                    aria-describedby="btnGroupMonth13"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.month_13 && errors.month_13}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridMonthsAverageKwh">
-                                                                            <Form.Label>Média</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonthsAverageKwh">kWh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultMonthsAverageKwh.toFixed(2)))}
-                                                                                    name="months_average"
-                                                                                    aria-label="Média"
-                                                                                    aria-describedby="btnGroupMonthsAverageKwh"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridAverageIncrease">
-                                                                            <Form.Label>Previsão de aumento</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupAverageIncrease">kWh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('average_increase', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        setFieldValue('average_increase', prettifyCurrency(e.target.value));
-
-                                                                                        const calcValues = handleFormValues(values);
-
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, true);
-                                                                                    }}
-                                                                                    value={values.average_increase}
-                                                                                    name="average_increase"
-                                                                                    isInvalid={!!errors.average_increase && touched.average_increase}
-                                                                                    aria-label="Previsão de aumento"
-                                                                                    aria-describedby="btnGroupAverageIncrease"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.average_increase && errors.average_increase}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridFinalAverageKwh">
-                                                                            <Form.Label>Consumo final</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupFinalAverageKwh">kWh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultFinalAverageKwh.toFixed(2)))}
-                                                                                    name="final_average"
-                                                                                    aria-label="Média final"
-                                                                                    aria-describedby="btnGroupFinalAverageKwh"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Col className="border-top mt-3 mb-3"></Col>
+                                                                    {
+                                                                        selectedCustomer && <>
+                                                                            <Row className="mb-3">
+                                                                                <Col sm={3}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Telefone comercial</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.phone}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={3} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Celular</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.cellphone}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={6} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">E-mail</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.email}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            <Row className="mb-3">
+                                                                                <Col sm={8}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Outros contatos</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.contacts}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={4} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Responsável</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.owner}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            <Row className="mb-3">
+                                                                                <Col sm={2}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">CEP</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.zip_code}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={8}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Rua</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.street}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={2} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Número</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.number}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            <Row className="mb-3">
+                                                                                <Col sm={4}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Complemento</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.complement}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            <Row className="mb-3">
+                                                                                <Col sm={6}>
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Bairro</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.neighborhood}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={4} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Cidade</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.city}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+
+                                                                                <Col sm={2} >
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <span className="text-success">Estado</span>
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row>
+                                                                                        <Col>
+                                                                                            <h6 className="text-secondary">{selectedCustomer.state}</h6>
+                                                                                        </Col>
+                                                                                    </Row>
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            <Row className="mb-2">
+                                                                                <Col>
+                                                                                    <Form.Check
+                                                                                        id="same_address"
+                                                                                        type="switch"
+                                                                                        label="Mesmo local para prestação dos serviços?"
+                                                                                        checked={values.same_address}
+                                                                                        onChange={(e) => {
+                                                                                            setFieldValue('same_address', !values.same_address);
+
+                                                                                            if (e.target.checked) {
+                                                                                                handleCities(selectedCustomer.city)
+
+                                                                                                setFieldValue('zip_code', selectedCustomer.zip_code);
+                                                                                                setFieldValue('street', selectedCustomer.street);
+                                                                                                setFieldValue('number', selectedCustomer.number);
+                                                                                                setFieldValue('neighborhood', selectedCustomer.neighborhood);
+                                                                                                setFieldValue('complement', selectedCustomer.complement ? selectedCustomer.complement : '');
+                                                                                                setFieldValue('state', selectedCustomer.state);
+                                                                                                setFieldValue('city', selectedCustomer.city);
+
+                                                                                                return
+                                                                                            }
+
+                                                                                            setFieldValue('zip_code', '');
+                                                                                            setFieldValue('street', '');
+                                                                                            setFieldValue('number', '');
+                                                                                            setFieldValue('neighborhood', '');
+                                                                                            setFieldValue('complement', '');
+                                                                                            setFieldValue('state', '');
+                                                                                            setFieldValue('city', '');
+
+                                                                                        }}
+                                                                                    />
+                                                                                </Col>
+                                                                            </Row>
+
+                                                                            {
+                                                                                !values.same_address && <>
+                                                                                    <Row>
+                                                                                        <Form.Group as={Col} lg={2} md={3} sm={3} controlId="formGridZipCode">
+                                                                                            <Form.Label>CEP</Form.Label>
+                                                                                            <Form.Control
+                                                                                                type="text"
+                                                                                                placeholder="00000000"
+                                                                                                autoComplete="off"
+                                                                                                onChange={e => {
+                                                                                                    handleChange(e);
+
+                                                                                                    if (e.target.value !== '' && e.target.value.length === 8) {
+                                                                                                        setSpinnerCep(true);
+                                                                                                        cep(e.target.value)
+                                                                                                            .then((cep: CEP) => {
+                                                                                                                const { street, neighborhood, city, state } = cep;
+
+                                                                                                                handleCities(state);
+
+                                                                                                                setFieldValue('street', street);
+                                                                                                                setFieldValue('neighborhood', neighborhood);
+                                                                                                                setFieldValue('city', city);
+                                                                                                                setFieldValue('state', state);
+
+                                                                                                                setSpinnerCep(false);
+                                                                                                            })
+                                                                                                            .catch(() => {
+                                                                                                                setSpinnerCep(false);
+                                                                                                            });
+                                                                                                    }
+                                                                                                }}
+                                                                                                value={values.zip_code}
+                                                                                                name="zip_code"
+                                                                                                isInvalid={!!errors.zip_code && touched.zip_code}
+                                                                                            />
+                                                                                            <Form.Control.Feedback type="invalid">{touched.zip_code && errors.zip_code}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+
+                                                                                        <Col style={{ display: 'flex', alignItems: 'center' }}>
+                                                                                            {
+                                                                                                spinnerCep && <Spinner
+                                                                                                    as="span"
+                                                                                                    animation="border"
+                                                                                                    variant="success"
+                                                                                                    role="status"
+                                                                                                    aria-hidden="true"
+                                                                                                />
+                                                                                            }
+                                                                                        </Col>
+                                                                                    </Row>
+
+                                                                                    <Row className="mb-2">
+                                                                                        <Form.Group as={Col} sm={10} controlId="formGridStreet">
+                                                                                            <Form.Label>Rua</Form.Label>
+                                                                                            <Form.Control
+                                                                                                type="address"
+                                                                                                onChange={handleChange}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.street}
+                                                                                                name="street"
+                                                                                                isInvalid={!!errors.street && touched.street}
+                                                                                            />
+                                                                                            <Form.Control.Feedback type="invalid">{touched.street && errors.street}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+
+                                                                                        <Form.Group as={Col} sm={2} controlId="formGridNumber">
+                                                                                            <Form.Label>Número</Form.Label>
+                                                                                            <Form.Control
+                                                                                                type="text"
+                                                                                                onChange={handleChange}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.number}
+                                                                                                name="number"
+                                                                                                isInvalid={!!errors.number && touched.number}
+                                                                                            />
+                                                                                            <Form.Control.Feedback type="invalid">{touched.number && errors.number}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+                                                                                    </Row>
+
+                                                                                    <Row className="mb-3">
+                                                                                        <Form.Group as={Col} controlId="formGridComplement">
+                                                                                            <Form.Label>Complemento</Form.Label>
+                                                                                            <Form.Control
+                                                                                                type="text"
+                                                                                                onChange={handleChange}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.complement}
+                                                                                                name="complement"
+                                                                                                isInvalid={!!errors.complement && touched.complement}
+                                                                                            />
+                                                                                            <Form.Control.Feedback type="invalid">{touched.complement && errors.complement}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+                                                                                    </Row>
+
+                                                                                    <Row className="mb-2">
+                                                                                        <Form.Group as={Col} sm={6} controlId="formGridNeighborhood">
+                                                                                            <Form.Label>Bairro</Form.Label>
+                                                                                            <Form.Control
+                                                                                                type="text"
+                                                                                                onChange={handleChange}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.neighborhood}
+                                                                                                name="neighborhood"
+                                                                                                isInvalid={!!errors.neighborhood && touched.neighborhood}
+                                                                                            />
+                                                                                            <Form.Control.Feedback type="invalid">{touched.neighborhood && errors.neighborhood}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+
+                                                                                        <Form.Group as={Col} sm={2} controlId="formGridState">
+                                                                                            <Form.Label>Estado</Form.Label>
+                                                                                            <Form.Control
+                                                                                                as="select"
+                                                                                                onChange={(e) => {
+                                                                                                    setFieldValue('state', e.target.value);
+
+                                                                                                    handleCities(e.target.value);
+                                                                                                }}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.state ? values.state : '...'}
+                                                                                                name="state"
+                                                                                                isInvalid={!!errors.state && touched.state}
+                                                                                            >
+                                                                                                <option hidden>...</option>
+                                                                                                {
+                                                                                                    statesCities.estados.map((estado, index) => {
+                                                                                                        return <option key={index} value={estado.sigla}>{estado.nome}</option>
+                                                                                                    })
+                                                                                                }
+                                                                                            </Form.Control>
+                                                                                            <Form.Control.Feedback type="invalid">{touched.state && errors.state}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+
+                                                                                        <Form.Group as={Col} sm={4} controlId="formGridCity">
+                                                                                            <Form.Label>Cidade</Form.Label>
+                                                                                            <Form.Control
+                                                                                                as="select"
+                                                                                                onChange={handleChange}
+                                                                                                onBlur={handleBlur}
+                                                                                                value={values.city ? values.city : '...'}
+                                                                                                name="city"
+                                                                                                isInvalid={!!errors.city && touched.city}
+                                                                                                disabled={!!!values.state}
+                                                                                            >
+                                                                                                <option hidden>...</option>
+                                                                                                {
+                                                                                                    !!values.state && cities.map((city, index) => {
+                                                                                                        return <option key={index} value={city}>{city}</option>
+                                                                                                    })
+                                                                                                }
+                                                                                            </Form.Control>
+                                                                                            <Form.Control.Feedback type="invalid">{touched.city && errors.city}</Form.Control.Feedback>
+                                                                                        </Form.Group>
+                                                                                    </Row>
+                                                                                </>
+                                                                            }
+                                                                        </>
+                                                                    }
+
+                                                                    <Col className="border-top mt-5 mb-3"></Col>
 
                                                                     <Row className="mb-3">
                                                                         <Col>
                                                                             <Row>
-                                                                                <Col>
-                                                                                    <h6 className="text-success">Projeto <FaSolarPanel /></h6>
-                                                                                </Col>
-                                                                            </Row>
-                                                                        </Col>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridMonthlyPaid">
-                                                                            <Form.Label>Valor médio mensal da conta de energia</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonthlyPaid">R$</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultMonthlyPaid.toFixed(2)))}
-                                                                                    name="monthly_paid"
-                                                                                    aria-label="Valor médio mensal da conta de energia"
-                                                                                    aria-describedby="btnGroupMonthlyPaid"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridYearlyPaid">
-                                                                            <Form.Label>Valor pago anualmente</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupYearlyPaid">R$</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultYearlyPaid.toFixed(2)))}
-                                                                                    name="yearly_paid"
-                                                                                    aria-label="Valor pago anualmente"
-                                                                                    aria-describedby="btnGroupYearlyPaid"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridPanelsAmount">
-                                                                            <Form.Label>Número total de Painéis Fotovoltaicos</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupPanelsAmount">Un</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={resultPanelsAmount}
-                                                                                    name="panels_amount"
-                                                                                    aria-label="Número total de Painéis Fotovoltaicos"
-                                                                                    aria-describedby="btnGroupPanelsAmount"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridSystemCapacityKwp">
-                                                                            <Form.Label>Capacidade Total do Sistema Fotovoltaico</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupSystemCapacityKwp">kWp</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultSystemCapacityKwp.toFixed(2)))}
-                                                                                    name="system_capacity"
-                                                                                    aria-label="Capacidade Total do Sistema"
-                                                                                    aria-describedby="btnGroupSystemCapacityKwp"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridMonthlyGeneratedEnergy">
-                                                                            <Form.Label>Total de energia gerada mensalmente</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupMonthlyGeneratedEnergy">Kwh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultMonthlyGeneratedEnergy.toFixed(2)))}
-                                                                                    name="monthly_generated"
-                                                                                    aria-label="Total de energia gerada mensalmente"
-                                                                                    aria-describedby="btnGroupMonthlyGeneratedEnergy"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridYearlyGeneratedEnergy">
-                                                                            <Form.Label>Total de energia gerada anualmente</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupYearlyGeneratedEnergy">Kwh</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultYearlyGeneratedEnergy.toFixed(2)))}
-                                                                                    name="yearly_generated"
-                                                                                    aria-label="Total de energia gerada anualmente"
-                                                                                    aria-describedby="btnGroupYearlyGeneratedEnergy"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Row className="mb-2">
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridCo2Reduction">
-                                                                            <Form.Label>Redução de emissão de gás CO² ao ano</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupCo2Reduction">Kg</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultCo2Reduction.toFixed(2)))}
-                                                                                    name="co2_reduction"
-                                                                                    aria-label="Redução de emissão de gás CO² ao ano"
-                                                                                    aria-describedby="btnGroupCo2Reduction"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridSystemArea">
-                                                                            <Form.Label>Área ocupada pelo sistema</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupSystemArea">m²</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultSystemArea.toFixed(2)))}
-                                                                                    name="system_area"
-                                                                                    aria-label="Área ocupada pelo sistema"
-                                                                                    aria-describedby="btnGroupSystemArea"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridFinalSystemCapacity">
-                                                                            <Form.Label>Capacidade arredondada do Sistema</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupFinalSystemCapacity">kWp</InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultFinalSystemCapacityKwp.toFixed(2)))}
-                                                                                    name="final_sistem_capacity"
-                                                                                    aria-label="Valor pago anualmente"
-                                                                                    aria-describedby="btnGroupFinalSystemCapacity"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-                                                                    </Row>
-
-                                                                    <Col className="border-top mt-3 mb-3"></Col>
-
-                                                                    <Row>
-                                                                        <Col>
-                                                                            <Row>
-                                                                                <Col>
+                                                                                <Col className="col-row">
                                                                                     <h6 className="text-success">Itens <FaClipboardList /></h6>
                                                                                 </Col>
+
+                                                                                <Col className="col-row">
+                                                                                    <Button
+                                                                                        variant="outline-success"
+                                                                                        size="sm"
+                                                                                        onClick={handleShowNewEstimateItemModal}
+                                                                                        title="Adicionar um novo serviço a este orçamento."
+                                                                                    >
+                                                                                        <FaPlus />
+                                                                                    </Button>
+                                                                                </Col>
                                                                             </Row>
                                                                         </Col>
                                                                     </Row>
 
-                                                                    <Row className="mb-2">
-                                                                        <Form.Check
-                                                                            type="switch"
-                                                                            id="show_values"
-                                                                            label="Exibir valores dos itens no orçamento?"
-                                                                            checked={values.show_values}
-                                                                            onChange={() => { setFieldValue('show_values', !values.show_values) }}
-                                                                        />
-                                                                    </Row>
-
                                                                     <Row>
-                                                                        <Col sm={2}><h6 className="text-secondary">Quantidade</h6></Col>
-                                                                        <Col sm={5}><h6 className="text-secondary">Produto</h6></Col>
+                                                                        <Col sm={1}><h6 className="text-secondary">Quantidade</h6></Col>
+                                                                        <Col sm={3}><h6 className="text-secondary">Produto</h6></Col>
+                                                                        <Col sm={3}><h6 className="text-secondary">Detalhes</h6></Col>
                                                                         <Col sm={2}><h6 className="text-secondary">Unitário</h6></Col>
                                                                         <Col sm={2}><h6 className="text-secondary">Total</h6></Col>
                                                                     </Row>
@@ -1661,14 +932,13 @@ export default function EditEstimate() {
                                                                             return <EstimateItems
                                                                                 key={estimateItem.id}
                                                                                 estimateItem={estimateItem}
-                                                                                estimateItemsList={estimateItemsList}
-                                                                                handleListEstimateItems={handleListEstimateItems}
-                                                                                canEdit={estimateItem.order === 0 ? true : false}
+                                                                                servicesList={servicesList}
+                                                                                handleListItems={handleListItems}
                                                                             />
                                                                         })
                                                                     }
 
-                                                                    <Col className="border-top mt-3 mb-3"></Col>
+                                                                    <Col className="border-top mt-5 mb-3"></Col>
 
                                                                     <Row className="mb-3">
                                                                         <Col>
@@ -1681,15 +951,13 @@ export default function EditEstimate() {
                                                                     </Row>
 
                                                                     <Row className="align-items-center">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridPreSystemPrice">
+                                                                        <Form.Group as={Col} sm={2} controlId="formGridPreSystemPrice">
                                                                             <Form.Label>Subtotal</Form.Label>
                                                                             <InputGroup className="mb-2">
-
                                                                                 <InputGroup.Text id="btnGroupPreSystemPrice">R$</InputGroup.Text>
-
                                                                                 <Form.Control
                                                                                     type="text"
-                                                                                    value={prettifyCurrency(String(resultPreSystemPrice.toFixed(2)))}
+                                                                                    value={prettifyCurrency(String(subTotal.toFixed(2)))}
                                                                                     name="pre_system_value"
                                                                                     aria-label="Valor do sistema "
                                                                                     aria-describedby="btnGroupPreSystemPrice"
@@ -1698,39 +966,55 @@ export default function EditEstimate() {
                                                                             </InputGroup>
                                                                         </Form.Group>
 
-                                                                        <Col sm={3}>
-                                                                            <Form.Check
-                                                                                type="switch"
-                                                                                id="percent"
-                                                                                label="Valores em Reais (R$)"
-                                                                                checked={!values.percent}
-                                                                                onChange={() => {
-                                                                                    setFieldValue('percent', !values.percent);
-
-                                                                                    const calcValues = handleFormValues({ ...values, percent: !values.percent });
-
-                                                                                    if (calcValues) handleCalcEstimate(calcValues, false);
-                                                                                }}
-                                                                            />
-                                                                        </Col>
-
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridDiscount">
+                                                                        <Form.Group as={Col} sm={2} controlId="formGridDiscount">
                                                                             <Form.Label>Desconto</Form.Label>
                                                                             <InputGroup className="mb-2">
+                                                                                <InputGroup.Text id="btnGroupDiscount">
+                                                                                    <Form.Control
+                                                                                        as="select"
+                                                                                        style={{ padding: '0 0.3rem', textAlign: 'center' }}
+                                                                                        onChange={() => {
+                                                                                            setDiscountPercent(!values.discount_percent)
 
-                                                                                <InputGroup.Text id="btnGroupDiscount">{values.percent ? '%' : 'R$'}</InputGroup.Text>
+                                                                                            handleFinalTotal(
+                                                                                                subTotal,
+                                                                                                !values.discount_percent,
+                                                                                                discount,
+                                                                                                increasePercent,
+                                                                                                increase
+                                                                                            );
 
+                                                                                            setFieldValue('discount_percent', !values.discount_percent);
+                                                                                        }}
+                                                                                        value={values.discount_percent ? 'percent' : 'money'}
+                                                                                        name="discount_percent"
+                                                                                        isInvalid={!!errors.discount_percent && touched.discount_percent}
+                                                                                    >
+                                                                                        <option value="percent">%</option>
+                                                                                        <option value="money">R$</option>
+                                                                                    </Form.Control>
+                                                                                </InputGroup.Text>
                                                                                 <Form.Control
                                                                                     type="text"
                                                                                     onChange={(e) => {
                                                                                         setFieldValue('discount', prettifyCurrency(e.target.value));
                                                                                     }}
                                                                                     onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                                                                        const newDiscount = Number(
+                                                                                            prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
+                                                                                        );
+
                                                                                         setFieldValue('discount', prettifyCurrency(e.target.value));
 
-                                                                                        const calcValues = handleFormValues(values);
+                                                                                        setDiscount(newDiscount);
 
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, false);
+                                                                                        handleFinalTotal(
+                                                                                            subTotal,
+                                                                                            discountPercent,
+                                                                                            newDiscount,
+                                                                                            increasePercent,
+                                                                                            increase
+                                                                                        );
                                                                                     }}
                                                                                     value={values.discount}
                                                                                     name="discount"
@@ -1740,13 +1024,37 @@ export default function EditEstimate() {
                                                                                 />
                                                                             </InputGroup>
                                                                             <Form.Control.Feedback type="invalid">{touched.discount && errors.discount}</Form.Control.Feedback>
-                                                                        </Form.Group>
+                                                                        </Form.Group >
 
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridDiscount">
+                                                                        <Form.Group as={Col} sm={2} controlId="formGridIncrease">
                                                                             <Form.Label>Acréscimo</Form.Label>
                                                                             <InputGroup className="mb-2">
 
-                                                                                <InputGroup.Text id="btnGroupDiscount">{values.percent ? '%' : 'R$'}</InputGroup.Text>
+                                                                                <InputGroup.Text id="btnGroupIncrease">
+                                                                                    <Form.Control
+                                                                                        as="select"
+                                                                                        style={{ padding: '0 0.3rem', textAlign: 'center' }}
+                                                                                        onChange={() => {
+                                                                                            setIncreasePercent(!values.increase_percent);
+
+                                                                                            handleFinalTotal(
+                                                                                                subTotal,
+                                                                                                discountPercent,
+                                                                                                discount,
+                                                                                                !values.increase_percent,
+                                                                                                increase
+                                                                                            );
+
+                                                                                            setFieldValue('increase_percent', !values.increase_percent);
+                                                                                        }}
+                                                                                        value={values.increase_percent ? 'percent' : 'money'}
+                                                                                        name="increase_percent"
+                                                                                        isInvalid={!!errors.increase_percent && touched.increase_percent}
+                                                                                    >
+                                                                                        <option value="percent">%</option>
+                                                                                        <option value="money">R$</option>
+                                                                                    </Form.Control>
+                                                                                </InputGroup.Text>
 
                                                                                 <Form.Control
                                                                                     type="text"
@@ -1754,59 +1062,93 @@ export default function EditEstimate() {
                                                                                         setFieldValue('increase', prettifyCurrency(e.target.value));
                                                                                     }}
                                                                                     onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                                                                        const newIncrease = Number(
+                                                                                            prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
+                                                                                        );
+
                                                                                         setFieldValue('increase', prettifyCurrency(e.target.value));
 
-                                                                                        const calcValues = handleFormValues(values);
+                                                                                        setIncrease(newIncrease);
 
-                                                                                        if (calcValues) handleCalcEstimate(calcValues, false);
+                                                                                        handleFinalTotal(
+                                                                                            subTotal,
+                                                                                            discountPercent,
+                                                                                            discount,
+                                                                                            increasePercent,
+                                                                                            newIncrease,
+                                                                                        );
                                                                                     }}
                                                                                     value={values.increase}
                                                                                     name="increase"
                                                                                     isInvalid={!!errors.increase && touched.increase}
                                                                                     aria-label="Valor"
-                                                                                    aria-describedby="btnGroupDiscount"
+                                                                                    aria-describedby="btnGroupIncrease"
+                                                                                />
+                                                                            </InputGroup>
+                                                                            <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
+                                                                        </Form.Group >
+
+                                                                        <Form.Group as={Col} sm={2} controlId="formGridTotal">
+                                                                            <h6 className="text-success">Valor final <FaMoneyBillWave /></h6>
+                                                                            <InputGroup className="mb-2">
+                                                                                <InputGroup.Text id="btnGroupTotal">R$</InputGroup.Text>
+                                                                                <Form.Control
+                                                                                    type="text"
+                                                                                    value={prettifyCurrency(String(finalTotal.toFixed(2)))}
+                                                                                    name="total"
+                                                                                    aria-label="Valor"
+                                                                                    aria-describedby="btnGroupTotal"
+                                                                                    readOnly
                                                                                 />
                                                                             </InputGroup>
                                                                             <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
                                                                         </Form.Group>
                                                                     </Row>
 
-                                                                    <Row className="mb-2">
-                                                                        <Form.Check
-                                                                            type="switch"
-                                                                            id="show_discount"
-                                                                            label="Exibir descontos no orçamento?"
-                                                                            checked={values.show_discount}
-                                                                            onChange={() => { setFieldValue('show_discount', !values.show_discount) }}
-                                                                        />
+                                                                    <Row className="mb-3">
+                                                                        <Form.Group as={Col} controlId="formGridPayment">
+                                                                            <Form.Label>Pagamento</Form.Label>
+                                                                            <Form.Control
+                                                                                type="text"
+                                                                                placeholder="Descreva o pagamento"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.payment}
+                                                                                name="payment"
+                                                                                isInvalid={!!errors.payment && touched.payment}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.payment && errors.payment}</Form.Control.Feedback>
+                                                                        </Form.Group>
                                                                     </Row>
 
                                                                     <Row className="mb-3">
-                                                                        <Col>
-                                                                            <Row>
-                                                                                <Col>
-                                                                                    <h6 className="text-success">Valor final do sitema <FaMoneyBillWave /></h6>
-                                                                                </Col>
-                                                                            </Row>
-                                                                        </Col>
-                                                                    </Row>
-
-                                                                    <Row className="align-items-end">
-                                                                        <Form.Group as={Col} sm={3} controlId="formGridFinalSystemPrice">
-                                                                            <InputGroup>
-                                                                                <InputGroup.Text id="btnGroupFinalSystemPrice">R$</InputGroup.Text>
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(resultFinalSystemPrice.toFixed(2)))}
-                                                                                    name="pre_system_value"
-                                                                                    aria-label="Valor do sistema "
-                                                                                    aria-describedby="btnGroupFinalSystemPrice"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
+                                                                        <Form.Group as={Col} sm={3} controlId="formGridExpireAt">
+                                                                            <Form.Label>Validade do orçamento</Form.Label>
+                                                                            <Form.Control
+                                                                                type="date"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.expire_at}
+                                                                                name="expire_at"
+                                                                                isInvalid={!!errors.expire_at && touched.expire_at}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.expire_at && errors.expire_at}</Form.Control.Feedback>
                                                                         </Form.Group>
 
-                                                                        <Form.Group as={Col} sm={4} controlId="formGridStatus">
+                                                                        <Form.Group as={Col} sm={3} controlId="formGridFinishAt">
+                                                                            <Form.Label>Previsão de entrega</Form.Label>
+                                                                            <Form.Control
+                                                                                type="date"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.finish_at}
+                                                                                name="finish_at"
+                                                                                isInvalid={!!errors.finish_at && touched.finish_at}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.finish_at && errors.finish_at}</Form.Control.Feedback>
+                                                                        </Form.Group>
+
+                                                                        <Form.Group as={Col} sm={6} controlId="formGridStatus">
                                                                             <Form.Label>Fase</Form.Label>
                                                                             <Form.Control
                                                                                 as="select"
@@ -1871,6 +1213,20 @@ export default function EditEstimate() {
                                                             )}
                                                         </Formik>
 
+                                                        <NewEstimateItem
+                                                            show={showNewEstimateItemModal}
+                                                            servicesList={servicesList}
+                                                            estimateItemsList={estimateItemsList}
+                                                            handleNewItemToList={handleNewItemToList}
+                                                            handleCloseNewEstimateItemModal={handleCloseNewEstimateItemModal}
+                                                        />
+
+                                                        <SearchCustomers
+                                                            show={showSearchModal}
+                                                            handleCustomer={handleCustomer}
+                                                            handleCloseSearchModal={handleCloseSearchModal}
+                                                        />
+
                                                         <Modal show={showItemDelete} onHide={handleCloseItemDelete}>
                                                             <Modal.Header closeButton>
                                                                 <Modal.Title>Excluir orçamento</Modal.Title>
@@ -1915,6 +1271,8 @@ export default function EditEstimate() {
         </>
     )
 }
+
+export default EditEstimate;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
     const { token } = context.req.cookies;

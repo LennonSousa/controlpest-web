@@ -49,7 +49,7 @@ const Products: NextPage = () => {
 
     useEffect(() => {
         handleItemSideBar('products');
-        handleSelectedMenu('products-categories');
+        handleSelectedMenu('products-index');
 
         if (user) {
             if (can(user, "products", "view")) {

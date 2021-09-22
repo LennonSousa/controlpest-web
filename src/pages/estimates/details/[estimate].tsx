@@ -20,7 +20,7 @@ import { TokenVerify } from '../../../utils/tokenVerify';
 import { SideBarContext } from '../../../contexts/SideBarContext';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { can } from '../../../components/Users';
-import { Estimate } from '../../../components/Estimates';
+import { Estimate, calcSubTotal, calcFinalTotal } from '../../../components/Estimates';
 import PageBack from '../../../components/PageBack';
 import { PageWaiting, PageType } from '../../../components/PageWaiting';
 import { prettifyCurrency } from '../../../components/InputMask/masks';
@@ -74,30 +74,14 @@ export default function PropertyDetails() {
     }, [user, estimate]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function handleTotal(estimate: Estimate) {
-        let newSubTotal = 0;
-        const discount_percent = estimate.discount_percent;
-        const discount = estimate.discount;
-        const increase_percent = estimate.increase_percent;
-        const increase = estimate.increase;
+        const discountValue = Number(estimate.discount);
+        const increaseValue = Number(estimate.increase);
 
-        estimate.items.forEach(item => {
-            const totalItem = Number(item.amount) * Number(item.price);
-
-            newSubTotal = Number(newSubTotal) + Number(totalItem);
-        });
+        const newSubTotal = calcSubTotal(estimate.items);
 
         setSubTotal(newSubTotal);
 
-        // Discount and increase.
-        let finalPrice = newSubTotal;
-
-        if (discount_percent) finalPrice = newSubTotal - (newSubTotal * discount / 100);
-        else finalPrice = newSubTotal - discount;
-
-        if (increase > 0) {
-            if (increase_percent) finalPrice = finalPrice + (finalPrice * increase / 100);
-            else finalPrice = finalPrice + increase;
-        }
+        const finalPrice = calcFinalTotal(newSubTotal, estimate.discount_percent, discountValue, estimate.increase_percent, increaseValue);
 
         setFinalTotal(finalPrice);
     }
@@ -110,17 +94,17 @@ export default function PropertyDetails() {
         <>
             <NextSeo
                 title="Detalhes do orçamento"
-                description="Detalhes do orçamento da plataforma de gerenciamento da Mtech Solar."
+                description={`Detalhes do orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
                 openGraph={{
-                    url: 'https://app.mtechsolar.com.br',
+                    url: process.env.NEXT_PUBLIC_APP_URL,
                     title: 'Detalhes do orçamento',
-                    description: 'Detalhes do orçamento da plataforma de gerenciamento da Mtech Solar.',
+                    description: `Detalhes do orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                     images: [
                         {
-                            url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg',
-                            alt: 'Detalhes do orçamento | Plataforma Mtech Solar',
+                            url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg`,
+                            alt: `Detalhes do orçamento | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                         },
-                        { url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg' },
+                        { url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg` },
                     ],
                 }}
             />
@@ -429,7 +413,7 @@ export default function PropertyDetails() {
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(String(subTotal.toFixed(2)))}`} </h6>
+                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(Number(subTotal).toFixed(2))}`} </h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
@@ -475,7 +459,7 @@ export default function PropertyDetails() {
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(String(finalTotal.toFixed(2)))}`} </h6>
+                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(Number(finalTotal).toFixed(2))}`} </h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>

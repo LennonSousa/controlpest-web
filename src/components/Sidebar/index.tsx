@@ -392,7 +392,7 @@ const Sidebar: React.FC = () => {
                                     can(user, "services", "update") && <>
                                         <Dropdown.Divider />
 
-                                        <Link href="services/institutions">
+                                        <Link href="/services/prague-types">
                                             <a title="Listar todos os tipos de pragas" data-title="Listar todos os tipos de pragas">
                                                 <Row
                                                     className={
@@ -410,7 +410,7 @@ const Sidebar: React.FC = () => {
                                             </a>
                                         </Link>
 
-                                        <Link href="services/treatments">
+                                        <Link href="/services/treatment-types">
                                             <a title="Listar todos os tipos de tratamentos" data-title="Listar todos os tipos de tratamentos">
                                                 <Row
                                                     className={
@@ -428,7 +428,7 @@ const Sidebar: React.FC = () => {
                                             </a>
                                         </Link>
 
-                                        <Link href="services/builds">
+                                        <Link href="/services/build-types">
                                             <a title="Listar todos os tipos de estabelecimentos" data-title="Listar todos os tipos de estabelecimentos">
                                                 <Row
                                                     className={

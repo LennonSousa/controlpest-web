@@ -4,48 +4,39 @@ import { Formik } from 'formik';
 import * as Yup from 'yup';
 
 import { Service } from '../../Services';
-import { EstimateItem } from '../';
+import { ServiceOrderItem } from '../';
 import { AlertMessage, statusModal } from '../../Interfaces/AlertMessage';
 import { prettifyCurrency } from '../../InputMask/masks';
 
-interface NewEstimateItemProps {
+interface NewServiceOrderItemProps {
     show: boolean,
     servicesList: Service[],
-    estimateItemsList: EstimateItem[];
-    handleNewItemToList: (newItem: EstimateItem) => void;
-    handleCloseNewEstimateItemModal: () => void;
+    estimateItemsList: ServiceOrderItem[];
+    handleNewItemToList: (newItem: ServiceOrderItem) => void;
+    handleCloseNewServiceOrderItemModal: () => void;
 }
 
 const validationSchema = Yup.object().shape({
     name: Yup.string().required('Obrigatório!').max(50, 'Deve conter no máximo 50 caracteres!'),
     details: Yup.string().notRequired().max(50, 'Deve conter no máximo 50 caracteres!'),
     amount: Yup.string().required('Obrigatório!'),
-    price: Yup.string().required('Obrigatório!'),
 });
 
-const NewEstimateItem: React.FC<NewEstimateItemProps> = (
+const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
     {
         show,
         servicesList,
         handleNewItemToList,
         estimateItemsList,
-        handleCloseNewEstimateItemModal
+        handleCloseNewServiceOrderItemModal
     }
 ) => {
     // New items.
-    const [newItemTotalPrice, setNewItemTotalPrice] = useState(0);
-
     const [messageShow, setMessageShow] = useState(false);
     const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
 
-    function handleNewItemTotalPrice(price: number, amount: number) {
-        const total = Number(price) * Number(amount);
-
-        setNewItemTotalPrice(total);
-    }
-
     return (
-        <Modal show={show} onHide={handleCloseNewEstimateItemModal}>
+        <Modal show={show} onHide={handleCloseNewServiceOrderItemModal}>
             <Modal.Header closeButton>
                 <Modal.Title>Adicionar serviço</Modal.Title>
             </Modal.Header>
@@ -55,7 +46,6 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
                         name: '',
                         details: '',
                         amount: '0,00',
-                        price: '0,00',
                     }
                 }
                 onSubmit={async values => {
@@ -66,12 +56,11 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
                             setTypeMessage("waiting");
                             setMessageShow(true);
 
-                            const newItem: EstimateItem = {
+                            const newItem: ServiceOrderItem = {
                                 id: `@${estimateItemsList.length}`,
                                 name: foundService.name,
                                 details: values.details,
                                 amount: Number(values.amount.replaceAll(".", "").replaceAll(",", ".")),
-                                price: Number(values.price.replaceAll(".", "").replaceAll(",", ".")),
                                 order: estimateItemsList.length,
                             }
 
@@ -81,7 +70,7 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
 
                             setTimeout(() => {
                                 setMessageShow(false);
-                                handleCloseNewEstimateItemModal();
+                                handleCloseNewServiceOrderItemModal();
                             }, 1000);
                         };
 
@@ -144,33 +133,6 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
                             </Form.Group>
 
                             <Row className="mb-3">
-                                <Form.Group as={Col} sm={4} controlId="estimateItemFormGridPrice">
-                                    <Form.Label>Preço</Form.Label>
-                                    <InputGroup>
-                                        <InputGroup.Text id="btnGroupPrice">R$</InputGroup.Text>
-                                        <Form.Control
-                                            type="text"
-                                            onChange={(e) => {
-                                                setFieldValue('price', prettifyCurrency(e.target.value));
-
-                                                const price = Number(prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", "."));
-                                                const amount = Number(values.amount.replaceAll(".", "").replaceAll(",", "."));
-
-                                                handleNewItemTotalPrice(price, amount);
-                                            }}
-                                            onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                setFieldValue('price', prettifyCurrency(e.target.value));
-                                            }}
-                                            value={values.price}
-                                            name="price"
-                                            isInvalid={!!errors.price && touched.price}
-                                            aria-label="Valor do item"
-                                            aria-describedby="btnGroupPrice"
-                                        />
-                                    </InputGroup>
-                                    <Form.Control.Feedback type="invalid">{touched.price && errors.price}</Form.Control.Feedback>
-                                </Form.Group>
-
                                 <Form.Group as={Col} sm={4} controlId="estimateItemFormGridAmount">
                                     <Form.Label>Quantidade</Form.Label>
                                     <InputGroup>
@@ -179,11 +141,6 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
                                             type="text"
                                             onChange={(e) => {
                                                 setFieldValue('amount', prettifyCurrency(e.target.value));
-
-                                                const price = Number(values.price.replaceAll(".", "").replaceAll(",", "."));
-                                                const amount = Number(prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", "."));
-
-                                                handleNewItemTotalPrice(price, amount);
                                             }}
                                             onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
                                                 setFieldValue('amount', prettifyCurrency(e.target.value));
@@ -197,28 +154,13 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
                                     </InputGroup>
                                     <Form.Control.Feedback type="invalid">{touched.amount && errors.amount}</Form.Control.Feedback>
                                 </Form.Group>
-
-                                <Form.Group as={Col} sm={4} controlId="estimateItemFormGridTotal">
-                                    <Form.Label>Total</Form.Label>
-                                    <InputGroup>
-                                        <InputGroup.Text id="btnGroupTotal">R$</InputGroup.Text>
-                                        <Form.Control
-                                            type="text"
-                                            value={prettifyCurrency(newItemTotalPrice.toFixed(2))}
-                                            name="total"
-                                            readOnly
-                                            aria-label="Total do item"
-                                            aria-describedby="btnGroupTotal"
-                                        />
-                                    </InputGroup>
-                                </Form.Group>
                             </Row>
                         </Modal.Body>
                         <Modal.Footer>
                             {
                                 messageShow ? <AlertMessage status={typeMessage} /> :
                                     <>
-                                        <Button variant="secondary" onClick={handleCloseNewEstimateItemModal}>Cancelar</Button>
+                                        <Button variant="secondary" onClick={handleCloseNewServiceOrderItemModal}>Cancelar</Button>
                                         <Button variant="success" type="submit">Salvar</Button>
                                     </>
 
@@ -231,4 +173,4 @@ const NewEstimateItem: React.FC<NewEstimateItemProps> = (
     )
 }
 
-export default NewEstimateItem;
+export default NewServiceOrderItem;

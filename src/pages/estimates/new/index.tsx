@@ -16,6 +16,7 @@ import { SideBarContext } from '../../../contexts/SideBarContext';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { can } from '../../../components/Users';
 import { Customer } from '../../../components/Customers';
+import { calcSubTotal, calcFinalTotal } from '../../../components/Estimates';
 import { EstimateStatus } from '../../../components/EstimateStatus';
 import EstimateItems, { EstimateItem } from '../../../components/EstimateItems';
 import { Service } from '../../../components/Services';
@@ -73,6 +74,13 @@ const NewEstimate: NextPage = () => {
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
 
+    const [subTotal, setSubTotal] = useState(0);
+    const [discountPercent, setDiscountPercent] = useState(true);
+    const [discount, setDiscount] = useState(0);
+    const [increasePercent, setIncreasePercent] = useState(true);
+    const [increase, setIncrease] = useState(0);
+    const [finalTotal, setFinalTotal] = useState(0);
+
     const [showSearchModal, setShowSearchModal] = useState(false);
 
     const handleCloseSearchModal = () => setShowSearchModal(false);
@@ -82,13 +90,6 @@ const NewEstimate: NextPage = () => {
 
     const handleCloseNewEstimateItemModal = () => setShowNewEstimateItemModal(false);
     const handleShowNewEstimateItemModal = () => setShowNewEstimateItemModal(true);
-
-    const [subTotal, setSubTotal] = useState(0);
-    const [discountPercent, setDiscountPercent] = useState(true);
-    const [discount, setDiscount] = useState(0);
-    const [increasePercent, setIncreasePercent] = useState(true);
-    const [increase, setIncrease] = useState(0);
-    const [finalTotal, setFinalTotal] = useState(0);
 
     useEffect(() => {
         handleItemSideBar('estimates');
@@ -159,7 +160,7 @@ const NewEstimate: NextPage = () => {
 
         setEstimateItemsList(updatedListItems);
 
-        handleSubTotal(updatedListItems);
+        handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
     }
 
     async function handleListItems(updatedNewItem?: EstimateItem, toDelete?: boolean) {
@@ -180,7 +181,7 @@ const NewEstimate: NextPage = () => {
 
                 setEstimateItemsList(updatedListItems);
 
-                handleSubTotal(updatedListItems);
+                handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
 
                 return;
             }
@@ -193,35 +194,27 @@ const NewEstimate: NextPage = () => {
 
             setEstimateItemsList(updatedListItems);
 
-            handleSubTotal(updatedListItems);
+            handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
         }
     }
 
-    function handleSubTotal(listItems: EstimateItem[]) {
-        let newSubTotal = 0;
-
-        listItems.forEach(item => {
-            const totalItem = Number(item.amount) * Number(item.price);
-
-            newSubTotal = Number(newSubTotal) + Number(totalItem);
-        });
+    function handleSubTotal(
+        listItems: EstimateItem[],
+        isDiscountPercent: boolean,
+        discountValue: number,
+        isIncreasePercent: boolean,
+        increaseValue: number
+    ) {
+        const newSubTotal = calcSubTotal(listItems);
 
         setSubTotal(newSubTotal);
 
-        handleFinalTotal(newSubTotal, discountPercent, discount, increasePercent, increase);
+        handleFinalTotal(newSubTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
     }
 
-    function handleFinalTotal(subTotal: number, discount_percent: boolean, discount: number, increase_percent: boolean, increase: number) {
+    function handleFinalTotal(subTotal: number, isDiscountPercent: boolean, discountValue: number, isIncreasePercent: boolean, increaseValue: number) {
         // Discount and increase.
-        let finalPrice = subTotal;
-
-        if (discount_percent) finalPrice = subTotal - (subTotal * discount / 100);
-        else finalPrice = subTotal - discount;
-
-        if (increase > 0) {
-            if (increase_percent) finalPrice = finalPrice + (finalPrice * increase / 100);
-            else finalPrice = finalPrice + increase;
-        }
+        const finalPrice = calcFinalTotal(subTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
 
         setFinalTotal(finalPrice);
     }
@@ -304,7 +297,7 @@ const NewEstimate: NextPage = () => {
                                                         });
 
                                                         const res = await api.post('estimates', {
-                                                            customer: selectedCustomer.id,
+                                                            same_address: values.same_address,
                                                             zip_code: values.zip_code,
                                                             street: values.street,
                                                             number: values.number,
@@ -321,6 +314,7 @@ const NewEstimate: NextPage = () => {
                                                             finish_at: `${values.finish_at} 12:00:00`,
                                                             notes: values.notes,
                                                             user: values.user,
+                                                            customer: selectedCustomer.id,
                                                             status: values.status,
                                                             items,
                                                         });
@@ -639,7 +633,7 @@ const NewEstimate: NextPage = () => {
                                                                                     type="text"
                                                                                     placeholder="00000000"
                                                                                     autoComplete="off"
-                                                                                    onChange={(e) => {
+                                                                                    onChange={e => {
                                                                                         handleChange(e);
 
                                                                                         if (e.target.value !== '' && e.target.value.length === 8) {
@@ -825,8 +819,8 @@ const NewEstimate: NextPage = () => {
                                                                 return <EstimateItems
                                                                     key={estimateItem.id}
                                                                     estimateItem={estimateItem}
+                                                                    servicesList={servicesList}
                                                                     handleListItems={handleListItems}
-                                                                    isNewItem
                                                                 />
                                                             })
                                                         }
