@@ -5,6 +5,7 @@ import { Accordion, AccordionButton, Card, Dropdown, Nav, NavDropdown, Row, Col 
 import {
     FaColumns,
     FaUserTie,
+    FaFileInvoice,
     FaList,
     FaPlus,
     FaIdCard,
@@ -16,6 +17,8 @@ import {
     FaDolly,
     FaBriefcase,
     FaSpider,
+    FaStore,
+    FaPencilAlt,
     FaSkullCrossbones,
     FaBuilding,
 } from 'react-icons/fa';
@@ -155,7 +158,7 @@ const Sidebar: React.FC = () => {
                             onClick={() => handleItemSideBar('estimates')}
                         >
                             <div>
-                                <FaUserTie /> <span>Orçamento</span>
+                                <FaFileInvoice /> <span>Orçamento</span>
                             </div>
                         </AccordionButton>
 
@@ -385,7 +388,6 @@ const Sidebar: React.FC = () => {
                                     </Link>
                                 }
 
-
                                 {
                                     can(user, "services", "update") && <>
                                         <Dropdown.Divider />
@@ -444,6 +446,45 @@ const Sidebar: React.FC = () => {
                                             </a>
                                         </Link>
                                     </>
+                                }
+                            </Card.Body>
+                        </Accordion.Collapse>
+                    </Card>
+                }
+
+                {
+                    can(user, "store", "view") && <Card className={styles.menuCard}>
+                        <AccordionButton
+                            as={Card.Header}
+                            className={styles.menuCardHeader}
+                            eventKey="store"
+                            onClick={() => handleItemSideBar('store')}
+                        >
+                            <div>
+                                <FaStore /> <span>Loja</span>
+                            </div>
+                        </AccordionButton>
+
+                        <Accordion.Collapse eventKey="store">
+                            <Card.Body className={styles.menuCardBody}>
+                                {
+                                    can(user, "store", "update") && <Link href="/store">
+                                        <a title="Editar as informações da loja." data-title="Editar as informações da loja.">
+                                            <Row
+                                                className={
+                                                    selectedMenu === 'store-edit' ? styles.selectedMenuCardBodyItem :
+                                                        styles.menuCardBodyItem
+                                                }
+                                            >
+                                                <Col sm={1}>
+                                                    <FaPencilAlt size={14} />
+                                                </Col>
+                                                <Col>
+                                                    <span>Configurar</span>
+                                                </Col>
+                                            </Row>
+                                        </a>
+                                    </Link>
                                 }
                             </Card.Body>
                         </Accordion.Collapse>

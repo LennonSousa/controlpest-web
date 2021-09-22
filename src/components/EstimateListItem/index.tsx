@@ -25,7 +25,7 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                     <Col sm={10}>
                         <Link href={`/estimates/details/${estimate.id}`}>
                             <a>
-                                <h5 className={styles.itemText}>{estimate.customer}</h5>
+                                <h5 className={styles.itemText}>{estimate.customer.name}</h5>
                             </a>
                         </Link>
                     </Col>

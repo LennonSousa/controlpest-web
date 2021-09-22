@@ -37,10 +37,13 @@ const validationSchema = Yup.object().shape({
     complement: Yup.string().notRequired().nullable(),
     city: Yup.string().required('Obrigatório!'),
     state: Yup.string().required('Obrigatório!'),
+    discount_percent: Yup.boolean().notRequired(),
     discount: Yup.string().required('Obrigatório!'),
+    increase_percent: Yup.boolean().notRequired(),
     increase: Yup.string().required('Obrigatório!'),
-    percent: Yup.boolean().notRequired(),
     payment: Yup.string().notRequired().nullable(),
+    expire_at: Yup.date().required('Obrigatório!'),
+    finish_at: Yup.date().required('Obrigatório!'),
     notes: Yup.string().notRequired().nullable(),
     user: Yup.string().notRequired().nullable(),
     status: Yup.string().required('Obrigatório!'),
@@ -81,8 +84,9 @@ const NewEstimate: NextPage = () => {
     const handleShowNewEstimateItemModal = () => setShowNewEstimateItemModal(true);
 
     const [subTotal, setSubTotal] = useState(0);
-    const [percent, setPercent] = useState(true);
+    const [discountPercent, setDiscountPercent] = useState(true);
     const [discount, setDiscount] = useState(0);
+    const [increasePercent, setIncreasePercent] = useState(true);
     const [increase, setIncrease] = useState(0);
     const [finalTotal, setFinalTotal] = useState(0);
 
@@ -204,19 +208,19 @@ const NewEstimate: NextPage = () => {
 
         setSubTotal(newSubTotal);
 
-        handleFinalTotal(newSubTotal, percent, discount, increase);
+        handleFinalTotal(newSubTotal, discountPercent, discount, increasePercent, increase);
     }
 
-    function handleFinalTotal(subTotal: number, percent: boolean, discount: number, increase: number) {
+    function handleFinalTotal(subTotal: number, discount_percent: boolean, discount: number, increase_percent: boolean, increase: number) {
         // Discount and increase.
-        let finalPrice = subTotal - (subTotal * discount / 100);
+        let finalPrice = subTotal;
 
-        if (!percent) finalPrice = subTotal - discount;
+        if (discount_percent) finalPrice = subTotal - (subTotal * discount / 100);
+        else finalPrice = subTotal - discount;
 
         if (increase > 0) {
-            finalPrice = subTotal + (subTotal * increase / 100);
-
-            if (!percent) finalPrice = subTotal + increase;
+            if (increase_percent) finalPrice = finalPrice + (finalPrice * increase / 100);
+            else finalPrice = finalPrice + increase;
         }
 
         setFinalTotal(finalPrice);
@@ -268,10 +272,13 @@ const NewEstimate: NextPage = () => {
                                                     complement: selectedCustomer ? selectedCustomer.complement : '',
                                                     city: selectedCustomer ? selectedCustomer.city : '',
                                                     state: selectedCustomer ? selectedCustomer.state : '',
+                                                    discount_percent: true,
                                                     discount: '0,00',
+                                                    increase_percent: true,
                                                     increase: '0,00',
-                                                    percent: true,
                                                     payment: '',
+                                                    expire_at: format(new Date(), 'yyyy-MM-dd'),
+                                                    finish_at: format(new Date(), 'yyyy-MM-dd'),
                                                     notes: '',
                                                     user: user.id,
                                                     status: '',
@@ -305,10 +312,13 @@ const NewEstimate: NextPage = () => {
                                                             complement: values.complement,
                                                             city: values.city,
                                                             state: values.state,
+                                                            discount_percent: values.discount_percent,
                                                             discount: Number(values.discount.replaceAll(".", "").replaceAll(",", ".")),
+                                                            increase_percent: values.increase_percent,
                                                             increase: Number(values.increase.replaceAll(".", "").replaceAll(",", ".")),
-                                                            percent: values.percent,
                                                             payment: values.payment,
+                                                            expire_at: `${values.expire_at} 12:00:00`,
+                                                            finish_at: `${values.finish_at} 12:00:00`,
                                                             notes: values.notes,
                                                             user: values.user,
                                                             status: values.status,
@@ -781,14 +791,14 @@ const NewEstimate: NextPage = () => {
 
                                                         <Col className="border-top mt-5 mb-3"></Col>
 
-                                                        <Row>
+                                                        <Row className="mb-3">
                                                             <Col>
                                                                 <Row>
-                                                                    <Col>
+                                                                    <Col className="col-row">
                                                                         <h6 className="text-success">Itens <FaClipboardList /></h6>
                                                                     </Col>
 
-                                                                    <Col sm={1}>
+                                                                    <Col className="col-row">
                                                                         <Button
                                                                             variant="outline-success"
                                                                             size="sm"
@@ -834,7 +844,7 @@ const NewEstimate: NextPage = () => {
                                                         </Row>
 
                                                         <Row className="align-items-center">
-                                                            <Form.Group as={Col} sm={3} controlId="formGridPreSystemPrice">
+                                                            <Form.Group as={Col} sm={2} controlId="formGridPreSystemPrice">
                                                                 <Form.Label>Subtotal</Form.Label>
                                                                 <InputGroup className="mb-2">
                                                                     <InputGroup.Text id="btnGroupPreSystemPrice">R$</InputGroup.Text>
@@ -849,29 +859,55 @@ const NewEstimate: NextPage = () => {
                                                                 </InputGroup>
                                                             </Form.Group>
 
-                                                            <Form.Group as={Col} sm={2} controlId="formGridPercent">
-                                                            </Form.Group>
-
                                                             <Form.Group as={Col} sm={2} controlId="formGridDiscount">
                                                                 <Form.Label>Desconto</Form.Label>
                                                                 <InputGroup className="mb-2">
-                                                                    <InputGroup.Text id="btnGroupDiscount">{values.percent ? '%' : 'R$'}</InputGroup.Text>
+                                                                    <InputGroup.Text id="btnGroupDiscount">
+                                                                        <Form.Control
+                                                                            as="select"
+                                                                            style={{ padding: '0 0.3rem', textAlign: 'center' }}
+                                                                            onChange={() => {
+                                                                                setDiscountPercent(!values.discount_percent)
+
+                                                                                handleFinalTotal(
+                                                                                    subTotal,
+                                                                                    !values.discount_percent,
+                                                                                    discount,
+                                                                                    increasePercent,
+                                                                                    increase
+                                                                                );
+
+                                                                                setFieldValue('discount_percent', !values.discount_percent);
+                                                                            }}
+                                                                            value={values.discount_percent ? 'percent' : 'money'}
+                                                                            name="discount_percent"
+                                                                            isInvalid={!!errors.discount_percent && touched.discount_percent}
+                                                                        >
+                                                                            <option value="percent">%</option>
+                                                                            <option value="money">R$</option>
+                                                                        </Form.Control>
+                                                                    </InputGroup.Text>
                                                                     <Form.Control
                                                                         type="text"
                                                                         onChange={(e) => {
                                                                             setFieldValue('discount', prettifyCurrency(e.target.value));
+                                                                        }}
+                                                                        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                                                            const newDiscount = Number(
+                                                                                prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
+                                                                            );
 
-                                                                            setDiscount(Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")));
+                                                                            setFieldValue('discount', prettifyCurrency(e.target.value));
+
+                                                                            setDiscount(newDiscount);
 
                                                                             handleFinalTotal(
                                                                                 subTotal,
-                                                                                percent,
-                                                                                Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")),
+                                                                                discountPercent,
+                                                                                newDiscount,
+                                                                                increasePercent,
                                                                                 increase
                                                                             );
-                                                                        }}
-                                                                        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                            setFieldValue('discount', prettifyCurrency(e.target.value));
                                                                         }}
                                                                         value={values.discount}
                                                                         name="discount"
@@ -887,24 +923,53 @@ const NewEstimate: NextPage = () => {
                                                                 <Form.Label>Acréscimo</Form.Label>
                                                                 <InputGroup className="mb-2">
 
-                                                                    <InputGroup.Text id="btnGroupIncrease">{values.percent ? '%' : 'R$'}</InputGroup.Text>
+                                                                    <InputGroup.Text id="btnGroupIncrease">
+                                                                        <Form.Control
+                                                                            as="select"
+                                                                            style={{ padding: '0 0.3rem', textAlign: 'center' }}
+                                                                            onChange={() => {
+                                                                                setIncreasePercent(!values.increase_percent);
+
+                                                                                handleFinalTotal(
+                                                                                    subTotal,
+                                                                                    discountPercent,
+                                                                                    discount,
+                                                                                    !values.increase_percent,
+                                                                                    increase
+                                                                                );
+
+                                                                                setFieldValue('increase_percent', !values.increase_percent);
+                                                                            }}
+                                                                            value={values.increase_percent ? 'percent' : 'money'}
+                                                                            name="increase_percent"
+                                                                            isInvalid={!!errors.increase_percent && touched.increase_percent}
+                                                                        >
+                                                                            <option value="percent">%</option>
+                                                                            <option value="money">R$</option>
+                                                                        </Form.Control>
+                                                                    </InputGroup.Text>
 
                                                                     <Form.Control
                                                                         type="text"
                                                                         onChange={(e) => {
                                                                             setFieldValue('increase', prettifyCurrency(e.target.value));
+                                                                        }}
+                                                                        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                                                            const newIncrease = Number(
+                                                                                prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
+                                                                            );
 
-                                                                            setIncrease(Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")));
+                                                                            setFieldValue('increase', prettifyCurrency(e.target.value));
+
+                                                                            setIncrease(newIncrease);
 
                                                                             handleFinalTotal(
                                                                                 subTotal,
-                                                                                percent,
+                                                                                discountPercent,
                                                                                 discount,
-                                                                                Number(e.target.value.replaceAll(".", "").replaceAll(",", ".")),
+                                                                                increasePercent,
+                                                                                newIncrease,
                                                                             );
-                                                                        }}
-                                                                        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                            setFieldValue('increase', prettifyCurrency(e.target.value));
                                                                         }}
                                                                         value={values.increase}
                                                                         name="increase"
@@ -916,10 +981,10 @@ const NewEstimate: NextPage = () => {
                                                                 <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
                                                             </Form.Group >
 
-                                                            <Form.Group as={Col} sm={3} controlId="formGridTotal">
+                                                            <Form.Group as={Col} sm={2} controlId="formGridTotal">
                                                                 <h6 className="text-success">Valor final <FaMoneyBillWave /></h6>
                                                                 <InputGroup className="mb-2">
-                                                                    <InputGroup.Text id="btnGroupTotal">{values.percent ? '%' : 'R$'}</InputGroup.Text>
+                                                                    <InputGroup.Text id="btnGroupTotal">R$</InputGroup.Text>
                                                                     <Form.Control
                                                                         type="text"
                                                                         value={prettifyCurrency(String(finalTotal.toFixed(2)))}
@@ -931,10 +996,52 @@ const NewEstimate: NextPage = () => {
                                                                 </InputGroup>
                                                                 <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
                                                             </Form.Group>
-                                                        </Row >
+                                                        </Row>
 
-                                                        <Row className="align-items-end mb-3">
-                                                            <Form.Group as={Col} sm={4} controlId="formGridStatus">
+                                                        <Row className="mb-3">
+                                                            <Form.Group as={Col} controlId="formGridPayment">
+                                                                <Form.Label>Pagamento</Form.Label>
+                                                                <Form.Control
+                                                                    type="text"
+                                                                    placeholder="Descreva o pagamento"
+                                                                    onChange={handleChange}
+                                                                    onBlur={handleBlur}
+                                                                    value={values.payment}
+                                                                    name="payment"
+                                                                    isInvalid={!!errors.payment && touched.payment}
+                                                                />
+                                                                <Form.Control.Feedback type="invalid">{touched.payment && errors.payment}</Form.Control.Feedback>
+                                                            </Form.Group>
+                                                        </Row>
+
+                                                        <Row className="mb-3">
+                                                            <Form.Group as={Col} sm={3} controlId="formGridExpireAt">
+                                                                <Form.Label>Validade do orçamento</Form.Label>
+                                                                <Form.Control
+                                                                    type="date"
+                                                                    onChange={handleChange}
+                                                                    onBlur={handleBlur}
+                                                                    value={values.expire_at}
+                                                                    name="expire_at"
+                                                                    isInvalid={!!errors.expire_at && touched.expire_at}
+                                                                />
+                                                                <Form.Control.Feedback type="invalid">{touched.expire_at && errors.expire_at}</Form.Control.Feedback>
+                                                            </Form.Group>
+
+                                                            <Form.Group as={Col} sm={3} controlId="formGridFinishAt">
+                                                                <Form.Label>Previsão de entrega</Form.Label>
+                                                                <Form.Control
+                                                                    type="date"
+                                                                    onChange={handleChange}
+                                                                    onBlur={handleBlur}
+                                                                    value={values.finish_at}
+                                                                    name="finish_at"
+                                                                    isInvalid={!!errors.finish_at && touched.finish_at}
+                                                                />
+                                                                <Form.Control.Feedback type="invalid">{touched.finish_at && errors.finish_at}</Form.Control.Feedback>
+                                                            </Form.Group>
+
+                                                            <Form.Group as={Col} sm={6} controlId="formGridStatus">
                                                                 <Form.Label>Fase</Form.Label>
                                                                 <Form.Control
                                                                     as="select"

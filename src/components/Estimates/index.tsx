@@ -14,9 +14,10 @@ export interface Estimate {
     complement: string;
     city: string;
     state: string;
+    discount_percent: boolean;
     discount: number;
+    increase_percent: boolean;
     increase: number;
-    percent: boolean;
     payment: string;
     created_by: string;
     created_at: Date;
