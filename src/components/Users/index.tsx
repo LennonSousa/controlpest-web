@@ -136,7 +136,7 @@ const Users: React.FC<UsersProps> = ({ user, userAuthenticated, handleListUsers 
         setPausing(true);
 
         try {
-            if (userAuthenticated.id !== user.id && !user.sudo) {
+            if (userAuthenticated.id !== user.id && !user.root) {
                 await api.put(`users/${user.id}`, {
                     name: user.name,
                     phone: user.phone,
@@ -172,7 +172,7 @@ const Users: React.FC<UsersProps> = ({ user, userAuthenticated, handleListUsers 
                 {
                     userAuthenticated.id !== user.id
                     && can(userAuthenticated, "users", "update")
-                    && !user.sudo
+                    && !user.root
                     && <Col className="col-row text-end">
                         <Button
                             variant="outline-success"
