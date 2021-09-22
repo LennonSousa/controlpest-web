@@ -260,7 +260,7 @@ export default function Estimates() {
                                                                                             <Row>
                                                                                                 <Col>
                                                                                                     <span className="text-italic">
-                                                                                                        {`${estimate.document} - ${estimate.city}/${estimate.state}`}
+                                                                                                        {`${estimate.customer.document} - ${estimate.city}/${estimate.state}`}
                                                                                                     </span>
                                                                                                 </Col>
                                                                                             </Row>
