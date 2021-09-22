@@ -15,7 +15,7 @@ import { User } from '../../../../components/Users';
 import { cellphone } from '../../../../components/InputMask/masks';
 import { AlertMessage, statusModal } from '../../../../components/Interfaces/AlertMessage';
 
-import styles from '../../../../styles/index.module.css';
+import styles from '../../../../styles/Home.module.css';
 
 const validationSchema = Yup.object().shape({
     name: Yup.string().required('Obrigatório!'),

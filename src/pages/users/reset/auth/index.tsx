@@ -14,7 +14,7 @@ import api from '../../../../api/api';
 import { User } from '../../../../components/Users';
 import { AlertMessage, statusModal } from '../../../../components/Interfaces/AlertMessage';
 
-import styles from '../../../../styles/index.module.css';
+import styles from '../../../../styles/Home.module.css';
 
 const validationSchema = Yup.object().shape({
     password: Yup.string().required('Obrigatório!').min(8, 'Mínimo 8 caracteres.'),

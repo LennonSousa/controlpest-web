@@ -11,7 +11,7 @@ import Cookies from 'js-cookie';
 import api from '../../../api/api';
 import { AlertMessage, statusModal } from '../../../components/Interfaces/AlertMessage';
 
-import styles from '../../../styles/index.module.css';
+import styles from '../../../styles/Home.module.css';
 
 const validationSchema = Yup.object().shape({
     email: Yup.string().email('E-mail inválido!').required('Obrigatório!'),
