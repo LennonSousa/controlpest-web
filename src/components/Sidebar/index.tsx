@@ -350,7 +350,7 @@ const Sidebar: React.FC = () => {
                                     </>
                                 }
 
-                                <Link href="/services">
+                                <Link href="/services/orders">
                                     <a title="Listar as ordens de serviço" data-title="Listar as ordens de serviço">
                                         <Row
                                             className={
@@ -369,11 +369,11 @@ const Sidebar: React.FC = () => {
                                 </Link>
 
                                 {
-                                    can(user, "services", "create") && <Link href="/services/new">
+                                    can(user, "services", "create") && <Link href="/services/orders/new">
                                         <a title="Criar uma nova ordem de serviço" data-title="Criar uma nova ordem de serviço">
                                             <Row
                                                 className={
-                                                    selectedMenu === 'services-new' ? styles.selectedMenuCardBodyItem :
+                                                    selectedMenu === 'services-orders-new' ? styles.selectedMenuCardBodyItem :
                                                         styles.menuCardBodyItem
                                                 }
                                             >

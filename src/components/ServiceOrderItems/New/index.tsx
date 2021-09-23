@@ -11,7 +11,7 @@ import { prettifyCurrency } from '../../InputMask/masks';
 interface NewServiceOrderItemProps {
     show: boolean,
     servicesList: Service[],
-    estimateItemsList: ServiceOrderItem[];
+    serviceOrderItemsList: ServiceOrderItem[];
     handleNewItemToList: (newItem: ServiceOrderItem) => void;
     handleCloseNewServiceOrderItemModal: () => void;
 }
@@ -27,7 +27,7 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
         show,
         servicesList,
         handleNewItemToList,
-        estimateItemsList,
+        serviceOrderItemsList,
         handleCloseNewServiceOrderItemModal
     }
 ) => {
@@ -57,11 +57,11 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
                             setMessageShow(true);
 
                             const newItem: ServiceOrderItem = {
-                                id: `@${estimateItemsList.length}`,
+                                id: `@${serviceOrderItemsList.length}`,
                                 name: foundService.name,
                                 details: values.details,
                                 amount: Number(values.amount.replaceAll(".", "").replaceAll(",", ".")),
-                                order: estimateItemsList.length,
+                                order: serviceOrderItemsList.length,
                             }
 
                             handleNewItemToList(newItem);
@@ -77,7 +77,7 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
 
                     }
                     catch (err) {
-                        console.log('error edit estimate item.');
+                        console.log('error edit serviceOrder item.');
                         console.log(err);
 
                         setTypeMessage("error");
@@ -92,7 +92,7 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
                 {({ handleChange, handleBlur, handleSubmit, values, setFieldValue, errors, touched }) => (
                     <Form onSubmit={handleSubmit}>
                         <Modal.Body>
-                            <Form.Group controlId="estimateItemFormGridName">
+                            <Form.Group controlId="serviceOrderItemFormGridName">
                                 <Form.Label>Serviço</Form.Label>
                                 <Form.Control
                                     as="select"
@@ -118,7 +118,7 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
                                 <Form.Control.Feedback type="invalid">{touched.name && errors.name}</Form.Control.Feedback>
                             </Form.Group>
 
-                            <Form.Group controlId="estimateItemFormGridDetails">
+                            <Form.Group controlId="serviceOrderItemFormGridDetails">
                                 <Form.Label>Detalhes</Form.Label>
                                 <Form.Control type="text"
                                     placeholder="Detalhes do item (opcional)."
@@ -133,7 +133,7 @@ const NewServiceOrderItem: React.FC<NewServiceOrderItemProps> = (
                             </Form.Group>
 
                             <Row className="mb-3">
-                                <Form.Group as={Col} sm={4} controlId="estimateItemFormGridAmount">
+                                <Form.Group as={Col} sm={4} controlId="serviceOrderItemFormGridAmount">
                                     <Form.Label>Quantidade</Form.Label>
                                     <InputGroup>
                                         <InputGroup.Text id="btnGroupAmount">Un</InputGroup.Text>

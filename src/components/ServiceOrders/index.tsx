@@ -5,6 +5,14 @@ import { ServiceOrderItem } from '../ServiceOrderItems';
 export interface ServiceOrder {
     id: string;
     customer: Customer;
+    same_address: boolean;
+    zip_code: string;
+    street: string;
+    number: string;
+    neighborhood: string;
+    complement: string;
+    city: string;
+    state: string;
     other_prague_type: string;
     other_treatment_type: string;
     build_description: string;

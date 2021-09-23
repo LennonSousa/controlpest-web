@@ -102,6 +102,11 @@ a:hover {
     background-color: var(--white);
 }
 
+.badge-item-type {
+    margin-right: 2rem;
+    cursor: pointer;
+}
+
 @media print {
     .content-page {
         box-shadow: none;
