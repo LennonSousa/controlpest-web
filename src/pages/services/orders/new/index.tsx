@@ -44,7 +44,7 @@ import { prettifyCurrency } from '../../../../components/InputMask/masks';
 import SearchCustomers from '../../../../components/Interfaces/SearchCustomers';
 
 const validationSchema = Yup.object().shape({
-    same_address: Yup.boolean().required('Obrigatório!'),
+    same_address: Yup.boolean().notRequired(),
     zip_code: Yup.string().notRequired().min(8, 'Deve conter no mínimo 8 caracteres!').max(8, 'Deve conter no máximo 8 caracteres!'),
     street: Yup.string().required('Obrigatório!'),
     number: Yup.string().required('Obrigatório!'),
@@ -54,12 +54,11 @@ const validationSchema = Yup.object().shape({
     state: Yup.string().required('Obrigatório!'),
     other_prague_type: Yup.string().notRequired().nullable(),
     other_treatment_type: Yup.string().notRequired().nullable(),
-    other_build_type: Yup.string().notRequired().nullable(),
     build_description: Yup.string().notRequired().nullable(),
     animals: Yup.boolean().notRequired(),
     old_people: Yup.boolean().notRequired(),
     allergic_people: Yup.boolean().notRequired(),
-    value: Yup.number().notRequired(),
+    value: Yup.string().notRequired(),
     payment: Yup.string().notRequired().nullable(),
     warranty: Yup.string().notRequired().nullable(),
     notes: Yup.string().notRequired().nullable(),
@@ -345,15 +344,33 @@ const NewServiceOrder: NextPage = () => {
                                                             }
                                                         });
 
-                                                        const res = await api.post('services-orders', {
+                                                        const builds = serviceBuildTypesList.map(item => {
+                                                            return {
+                                                                build: item.build.id,
+                                                            }
+                                                        });
+
+                                                        const pragues = servicePragueTypesList.map(item => {
+                                                            return {
+                                                                prague: item.prague.id,
+                                                            }
+                                                        });
+
+                                                        const treatments = serviceTreatmentTypesList.map(item => {
+                                                            return {
+                                                                treatment: item.treatment.id,
+                                                            }
+                                                        });
+
+                                                        const res = await api.post('services/orders', {
                                                             same_address: values.same_address,
-                                                            zip_code: values.zip_code,
-                                                            street: values.street,
-                                                            number: values.number,
-                                                            neighborhood: values.neighborhood,
-                                                            complement: values.complement,
-                                                            city: values.city,
-                                                            state: values.state,
+                                                            zip_code: selectedCustomer ? selectedCustomer.zip_code : '',
+                                                            street: selectedCustomer ? selectedCustomer.street : '',
+                                                            number: selectedCustomer ? selectedCustomer.number : '',
+                                                            neighborhood: selectedCustomer ? selectedCustomer.neighborhood : '',
+                                                            complement: selectedCustomer ? selectedCustomer.complement : '',
+                                                            city: selectedCustomer ? selectedCustomer.city : '',
+                                                            state: selectedCustomer ? selectedCustomer.state : '',
                                                             other_prague_type: values.other_prague_type,
                                                             other_treatment_type: values.other_treatment_type,
                                                             build_description: values.build_description,
@@ -369,12 +386,15 @@ const NewServiceOrder: NextPage = () => {
                                                             user: values.user,
                                                             customer: selectedCustomer.id,
                                                             items,
+                                                            builds,
+                                                            pragues,
+                                                            treatments
                                                         });
 
                                                         setTypeMessage("success");
 
                                                         setTimeout(() => {
-                                                            router.push(`/services-orders/details/${res.data.id}`)
+                                                            router.push(`/services/orders/details/${res.data.id}`)
                                                         }, 1000);
                                                     }
                                                     catch {

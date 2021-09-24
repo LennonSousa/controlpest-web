@@ -30,7 +30,7 @@ import SearchCustomers from '../../../components/Interfaces/SearchCustomers';
 import NewEstimateItem from '../../../components/EstimateItems/New';
 
 const validationSchema = Yup.object().shape({
-    same_address: Yup.boolean().required('Obrigatório!'),
+    same_address: Yup.boolean().notRequired(),
     zip_code: Yup.string().notRequired().min(8, 'Deve conter no mínimo 8 caracteres!').max(8, 'Deve conter no máximo 8 caracteres!'),
     street: Yup.string().required('Obrigatório!'),
     number: Yup.string().required('Obrigatório!'),

@@ -20,6 +20,8 @@ export function addServicePrague(pragueType: PragueType, index: number, serviceP
         prague: pragueType,
     }
 
+    console.log('New item: ', newItem);
+
     const updatedListItems = [...servicePragueTypesList, newItem];
 
     return updatedListItems;

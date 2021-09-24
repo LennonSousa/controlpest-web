@@ -3,34 +3,49 @@ import { GetServerSideProps } from 'next';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, FormControl, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
+import { Badge, Button, Col, Container, Form, FormControl, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { format } from 'date-fns';
-import { FaCashRegister, FaClipboardList, FaMoneyBillWave, FaUserTie, FaPlus, FaSearchPlus } from 'react-icons/fa';
+import {
+    FaBuilding,
+    FaCashRegister,
+    FaClipboardList,
+    FaMoneyBillWave,
+    FaUserTie,
+    FaPlus,
+    FaSearchPlus,
+    FaSpider,
+    FaSkullCrossbones,
+} from 'react-icons/fa';
 import cep, { CEP } from 'cep-promise';
 
-import api from '../../../api/api';
-import { TokenVerify } from '../../../utils/tokenVerify';
-import { SideBarContext } from '../../../contexts/SideBarContext';
-import { AuthContext } from '../../../contexts/AuthContext';
-import { can } from '../../../components/Users';
-import { Customer } from '../../../components/Customers';
-import { Estimate, calcSubTotal, calcFinalTotal } from '../../../components/Estimates';
-import { EstimateStatus } from '../../../components/EstimateStatus';
-import EstimateItems, { EstimateItem } from '../../../components/EstimateItems';
-import { Service } from '../../../components/Services';
+import api from '../../../../api/api';
+import { TokenVerify } from '../../../../utils/tokenVerify';
+import { SideBarContext } from '../../../../contexts/SideBarContext';
+import { AuthContext } from '../../../../contexts/AuthContext';
+import { can } from '../../../../components/Users';
+import { ServiceOrder } from '../../../../components/ServiceOrders';
+import { Customer } from '../../../../components/Customers';
+import { Service } from '../../../../components/Services';
+import NewServiceOrderItem from '../../../../components/ServiceOrderItems/New';
+import ServiceOrderItems, { ServiceOrderItem } from '../../../../components/ServiceOrderItems';
+import { PragueType } from '../../../../components/PragueTypes';
+import { BuildType } from '../../../../components/BuildTypes';
+import { TreatmentType } from '../../../../components/TreatmentTypes';
+import ServiceBuildTypes, { ServiceBuildType, addServiceBuild } from '../../../../components/ServiceBuildTypes';
+import ServicePragueTypes, { ServicePragueType, addServicePrague } from '../../../../components/ServicePragueTypes';
+import ServiceTreatmentTypes, { ServiceTreatmentType, addServiceTreatment } from '../../../../components/ServiceTreatmentTypes';
 
-import { statesCities } from '../../../components/StatesCities';
-import PageBack from '../../../components/PageBack';
-import { PageWaiting, PageType } from '../../../components/PageWaiting';
-import { AlertMessage, statusModal } from '../../../components/Interfaces/AlertMessage';
-import { prettifyCurrency } from '../../../components/InputMask/masks';
-import SearchCustomers from '../../../components/Interfaces/SearchCustomers';
-import NewEstimateItem from '../../../components/EstimateItems/New';
+import { statesCities } from '../../../../components/StatesCities';
+import PageBack from '../../../../components/PageBack';
+import { PageWaiting, PageType } from '../../../../components/PageWaiting';
+import { AlertMessage, statusModal } from '../../../../components/Interfaces/AlertMessage';
+import { prettifyCurrency } from '../../../../components/InputMask/masks';
+import SearchCustomers from '../../../../components/Interfaces/SearchCustomers';
 
 const validationSchema = Yup.object().shape({
-    same_address: Yup.boolean().required('Obrigatório!'),
+    same_address: Yup.boolean().notRequired(),
     zip_code: Yup.string().notRequired().min(8, 'Deve conter no mínimo 8 caracteres!').max(8, 'Deve conter no máximo 8 caracteres!'),
     street: Yup.string().required('Obrigatório!'),
     number: Yup.string().required('Obrigatório!'),
@@ -38,36 +53,52 @@ const validationSchema = Yup.object().shape({
     complement: Yup.string().notRequired().nullable(),
     city: Yup.string().required('Obrigatório!'),
     state: Yup.string().required('Obrigatório!'),
-    discount_percent: Yup.boolean().notRequired(),
-    discount: Yup.string().required('Obrigatório!'),
-    increase_percent: Yup.boolean().notRequired(),
-    increase: Yup.string().required('Obrigatório!'),
+    other_prague_type: Yup.string().notRequired().nullable(),
+    other_treatment_type: Yup.string().notRequired().nullable(),
+    build_description: Yup.string().notRequired().nullable(),
+    animals: Yup.boolean().notRequired(),
+    old_people: Yup.boolean().notRequired(),
+    allergic_people: Yup.boolean().notRequired(),
+    value: Yup.string().notRequired(),
     payment: Yup.string().notRequired().nullable(),
-    expire_at: Yup.date().required('Obrigatório!'),
-    finish_at: Yup.date().required('Obrigatório!'),
+    warranty: Yup.string().notRequired().nullable(),
     notes: Yup.string().notRequired().nullable(),
+    start_at: Yup.date().required('Obrigatório!'),
+    finish_at: Yup.date().required('Obrigatório!'),
     user: Yup.string().notRequired().nullable(),
-    status: Yup.string().required('Obrigatório!'),
 });
 
-const EditEstimate: NextPage = () => {
+const EditServiceOrder: NextPage = () => {
     const router = useRouter();
-    const { estimate } = router.query;
+    const { order } = router.query;
 
     const { handleItemSideBar, handleSelectedMenu } = useContext(SideBarContext);
     const { loading, user } = useContext(AuthContext);
 
-    const [data, setData] = useState<Estimate>();
+    const [data, setData] = useState<ServiceOrder>();
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer>();
     const [errorSelectedCustomer, setErrorSelectedCustomer] = useState(false);
 
-    const [estimateStatusList, setEstimateStatusList] = useState<EstimateStatus[]>([]);
-    const [estimateItemsList, setEstimateItemsList] = useState<EstimateItem[]>([]);
+    const [serviceOrderItemsList, setServiceOrderItemsList] = useState<ServiceOrderItem[]>([]);
     const [servicesList, setServicesList] = useState<Service[]>([]);
 
     const [itemsToDelete, setItemsToDelete] = useState<String[]>([]);
     const [itemsToUpdate, setItemsToUpdate] = useState<String[]>([]);
+
+    const [praguesToDelete, setPraguesToDelete] = useState<String[]>([]);
+
+    const [treatmentsToDelete, setTreatmentsToDelete] = useState<String[]>([]);
+
+    const [buildsToDelete, setBuildsToDelete] = useState<String[]>([]);
+
+    const [pragueTypesList, setPragueTypesList] = useState<PragueType[]>([]);
+    const [treatmentTypesList, setTreatmentTypesList] = useState<TreatmentType[]>([]);
+    const [buildTypesList, setBuildTypesList] = useState<BuildType[]>([]);
+
+    const [servicePragueTypesList, setServicePragueTypesList] = useState<ServicePragueType[]>([]);
+    const [serviceTreatmentTypesList, setServiceTreatmentTypesList] = useState<ServiceTreatmentType[]>([]);
+    const [serviceBuildTypesList, setServiceBuildTypesList] = useState<ServiceBuildType[]>([]);
 
     const [spinnerCep, setSpinnerCep] = useState(false);
     const [messageShow, setMessageShow] = useState(false);
@@ -79,13 +110,6 @@ const EditEstimate: NextPage = () => {
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
 
-    const [subTotal, setSubTotal] = useState(0);
-    const [discountPercent, setDiscountPercent] = useState(true);
-    const [discount, setDiscount] = useState(0);
-    const [increasePercent, setIncreasePercent] = useState(true);
-    const [increase, setIncrease] = useState(0);
-    const [finalTotal, setFinalTotal] = useState(0);
-
     const [deletingMessageShow, setDeletingMessageShow] = useState(false);
 
     const [showSearchModal, setShowSearchModal] = useState(false);
@@ -93,10 +117,10 @@ const EditEstimate: NextPage = () => {
     const handleCloseSearchModal = () => setShowSearchModal(false);
     const handleShowSearchModal = () => setShowSearchModal(true);
 
-    const [showNewEstimateItemModal, setShowNewEstimateItemModal] = useState(false);
+    const [showNewServiceOrderItemModal, setShowNewServiceOrderItemModal] = useState(false);
 
-    const handleCloseNewEstimateItemModal = () => setShowNewEstimateItemModal(false);
-    const handleShowNewEstimateItemModal = () => setShowNewEstimateItemModal(true);
+    const handleCloseNewServiceOrderItemModal = () => setShowNewServiceOrderItemModal(false);
+    const handleShowNewServiceOrderItemModal = () => setShowNewServiceOrderItemModal(true);
 
     const [showItemDelete, setShowItemDelete] = useState(false);
 
@@ -104,33 +128,21 @@ const EditEstimate: NextPage = () => {
     const handelShowItemDelete = () => setShowItemDelete(true);
 
     useEffect(() => {
-        handleItemSideBar('estimates');
-        handleSelectedMenu('estimates-index');
+        handleItemSideBar('services');
+        handleSelectedMenu('services-index');
 
         if (user) {
-            if (can(user, "estimates", "update")) {
-                api.get(`estimates/${estimate}`).then(res => {
-                    let estimateRes: Estimate = res.data;
+            if (can(user, "services", "update")) {
+                api.get(`services/orders/${order}`).then(res => {
+                    let serviceOrderRes: ServiceOrder = res.data;
 
-                    setSelectedCustomer(estimateRes.customer);
+                    setSelectedCustomer(serviceOrderRes.customer);
 
-                    setEstimateItemsList(estimateRes.items);
+                    setServiceBuildTypesList(serviceOrderRes.builds);
+                    setServicePragueTypesList(serviceOrderRes.pragues);
+                    setServiceTreatmentTypesList(serviceOrderRes.treatments);
 
-                    const discounValue = Number(estimateRes.discount);
-                    const increaseValue = Number(estimateRes.increase);
-
-                    setDiscountPercent(estimateRes.discount_percent);
-                    setDiscount(discounValue);
-                    setIncreasePercent(estimateRes.increase_percent);
-                    setIncrease(increaseValue);
-
-                    handleSubTotal(
-                        estimateRes.items,
-                        estimateRes.discount_percent,
-                        discounValue,
-                        estimateRes.increase_percent,
-                        increaseValue
-                    );
+                    setServiceOrderItemsList(serviceOrderRes.items);
 
                     try {
                         const stateCities = statesCities.estados.find(item => { return item.sigla === res.data.state })
@@ -140,20 +152,8 @@ const EditEstimate: NextPage = () => {
                     }
                     catch { }
 
-                    api.get('estimates/status').then(res => {
-                        setEstimateStatusList(res.data);
-                    }).catch(err => {
-                        console.log('Error to get estimates status, ', err);
-
-                        setTypeLoadingMessage("error");
-                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
-                        setHasErrors(true);
-                    });
-
                     api.get('services').then(res => {
                         setServicesList(res.data);
-
-                        setLoadingData(false);
                     }).catch(err => {
                         console.log('Error to get services, ', err);
 
@@ -162,9 +162,41 @@ const EditEstimate: NextPage = () => {
                         setHasErrors(true);
                     });
 
-                    setData(estimateRes);
+                    api.get('prague-types').then(res => {
+                        setPragueTypesList(res.data);
+                    }).catch(err => {
+                        console.log('Error to get prague types, ', err);
+
+                        setTypeLoadingMessage("error");
+                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
+                        setHasErrors(true);
+                    });
+
+                    api.get('treatment-types').then(res => {
+                        setTreatmentTypesList(res.data);
+                    }).catch(err => {
+                        console.log('Error to get treatment types, ', err);
+
+                        setTypeLoadingMessage("error");
+                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
+                        setHasErrors(true);
+                    });
+
+                    api.get('build-types').then(res => {
+                        setBuildTypesList(res.data);
+
+                        setLoadingData(false);
+                    }).catch(err => {
+                        console.log('Error to get build types, ', err);
+
+                        setTypeLoadingMessage("error");
+                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
+                        setHasErrors(true);
+                    });
+
+                    setData(serviceOrderRes);
                 }).catch(err => {
-                    console.log('Error to get estimate to edit, ', err);
+                    console.log('Error to get order to edit, ', err);
 
                     setTypeLoadingMessage("error");
                     setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
@@ -173,7 +205,7 @@ const EditEstimate: NextPage = () => {
             }
         }
 
-    }, [user, estimate]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [user, order]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
     useEffect(() => {
@@ -196,17 +228,63 @@ const EditEstimate: NextPage = () => {
             setCities(stateCities.cidades);
     }
 
-    async function handleNewItemToList(newItem: EstimateItem) {
-        const updatedListItems = [...estimateItemsList, newItem];
+    async function handleNewItemToList(newItem: ServiceOrderItem) {
+        const updatedListItems = [...serviceOrderItemsList, newItem];
 
-        setEstimateItemsList(updatedListItems);
-
-        handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
+        setServiceOrderItemsList(updatedListItems);
     }
 
-    async function handleListItems(updatedNewItem?: EstimateItem, toDelete?: boolean) {
+    async function handleNewServicePragueTypeToList(pragueType: PragueType) {
+        setServicePragueTypesList(addServicePrague(pragueType, servicePragueTypesList.length, servicePragueTypesList));
+    }
+
+    async function handleNewServiceTreatmentTypeToList(treatmentType: TreatmentType) {
+        setServiceTreatmentTypesList(addServiceTreatment(treatmentType, serviceTreatmentTypesList.length, serviceTreatmentTypesList));
+    }
+
+    async function handleNewServiceBuildTypeToList(buildType: BuildType) {
+        setServiceBuildTypesList(addServiceBuild(buildType, serviceBuildTypesList.length, serviceBuildTypesList));
+    }
+
+    function handleServicePragueTypesList(servicePragueType: ServicePragueType) {
+        const updatedListItems = servicePragueTypesList.filter(item => {
+            return item.id !== servicePragueType.id;
+        });
+
+        if (!servicePragueType.id.startsWith('@')) {
+            setPraguesToDelete([...praguesToDelete, servicePragueType.id]);
+        }
+
+        setServicePragueTypesList(updatedListItems);
+    }
+
+    function handleServiceTreatmentTypesList(serviceTreatmentType: ServiceTreatmentType) {
+        const updatedListItems = serviceTreatmentTypesList.filter(item => {
+            return item.id !== serviceTreatmentType.id;
+        });
+
+        if (!serviceTreatmentType.id.startsWith('@')) {
+            setTreatmentsToDelete([...treatmentsToDelete, serviceTreatmentType.id]);
+        }
+
+        setServiceTreatmentTypesList(updatedListItems);
+    }
+
+    function handleServiceBuildTypesList(serviceBuildType: ServiceBuildType) {
+        const updatedListItems = serviceBuildTypesList.filter(item => {
+            return item.id !== serviceBuildType.id;
+        });
+
+        if (!serviceBuildType.id.startsWith('@')) {
+            setBuildsToDelete([...buildsToDelete, serviceBuildType.id]);
+        }
+
+        setServiceBuildTypesList(updatedListItems);
+    }
+
+    async function handleListItems(updatedNewItem?: ServiceOrderItem, toDelete?: boolean) {
         if (updatedNewItem) {
-            let updatedListItems = estimateItemsList;
+            let updatedListItems = serviceOrderItemsList;
 
             if (toDelete) {
                 updatedListItems = updatedListItems.filter(item => {
@@ -240,11 +318,9 @@ const EditEstimate: NextPage = () => {
                     }
                 });
 
-                setEstimateItemsList(updatedListItems);
+                setServiceOrderItemsList(updatedListItems);
 
                 setItemsToUpdate(idsToUpdate);
-
-                handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
 
                 return;
             }
@@ -257,51 +333,28 @@ const EditEstimate: NextPage = () => {
 
             if (!updatedNewItem.id.startsWith('@')) setItemsToUpdate([...itemsToUpdate, updatedNewItem.id]);
 
-            setEstimateItemsList(updatedListItems);
-
-            handleSubTotal(updatedListItems, discountPercent, discount, increasePercent, increase);
+            setServiceOrderItemsList(updatedListItems);
         }
     }
 
-    function handleSubTotal(
-        listItems: EstimateItem[],
-        isDiscountPercent: boolean,
-        discountValue: number,
-        isIncreasePercent: boolean,
-        increaseValue: number
-    ) {
-        const newSubTotal = calcSubTotal(listItems);
-
-        setSubTotal(newSubTotal);
-
-        handleFinalTotal(newSubTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
-    }
-
-    function handleFinalTotal(subTotal: number, isDiscountPercent: boolean, discountValue: number, isIncreasePercent: boolean, increaseValue: number) {
-        // Discount and increase.
-        const finalPrice = calcFinalTotal(subTotal, isDiscountPercent, discountValue, isIncreasePercent, increaseValue);
-
-        setFinalTotal(finalPrice);
-    }
-
     async function handleItemDelete() {
-        if (user && estimate) {
+        if (user && order) {
             setTypeMessage("waiting");
             setDeletingMessageShow(true);
 
             try {
-                if (can(user, "estimates", "remove")) {
-                    await api.delete(`estimates/${estimate}`);
+                if (can(user, "services", "remove")) {
+                    await api.delete(`services/orders/${order}`);
 
                     setTypeMessage("success");
 
                     setTimeout(() => {
-                        router.push('/estimates');
+                        router.push('/services/orders');
                     }, 1000);
                 }
             }
             catch (err) {
-                console.log('error deleting estimate');
+                console.log('error deleting service order');
                 console.log(err);
 
                 setTypeMessage("error");
@@ -316,16 +369,16 @@ const EditEstimate: NextPage = () => {
     return (
         <>
             <NextSeo
-                title="Editar orçamento"
-                description={`Editar orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
+                title="Editar ordem de serviço"
+                description={`Editar ordem de serviço da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
                 openGraph={{
                     url: process.env.NEXT_PUBLIC_APP_URL,
-                    title: 'Editar orçamento',
-                    description: `Editar orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
+                    title: 'Editar ordem de serviço',
+                    description: `Editar ordem de serviço da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                     images: [
                         {
                             url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg`,
-                            alt: `Editar orçamento | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
+                            alt: `Editar ordem de serviço | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                         },
                         { url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg` },
                     ],
@@ -336,7 +389,7 @@ const EditEstimate: NextPage = () => {
                 !user || loading ? <PageWaiting status="waiting" /> :
                     <>
                         {
-                            can(user, "estimates", "update") ? <>
+                            can(user, "services", "update") ? <>
                                 {
                                     loadingData || hasErrors ? <PageWaiting
                                         status={typeLoadingMessage}
@@ -348,7 +401,7 @@ const EditEstimate: NextPage = () => {
                                                     <Container className="content-page">
                                                         <Row className="mb-3">
                                                             <Col>
-                                                                <PageBack href={`/estimates/details/${data.id}`} subTitle="Voltar para a lista de orçamentos" />
+                                                                <PageBack href={`/services/orders/details/${data.id}`} subTitle="Voltar para a lista de ordem de serviços" />
                                                             </Col>
                                                         </Row>
 
@@ -362,15 +415,18 @@ const EditEstimate: NextPage = () => {
                                                                 complement: data.same_address ? data.customer.complement : data.complement,
                                                                 city: data.same_address ? data.customer.city : data.city,
                                                                 state: data.same_address ? data.customer.state : data.state,
-                                                                discount_percent: data.discount_percent,
-                                                                discount: prettifyCurrency(String(data.discount)),
-                                                                increase_percent: data.increase_percent,
-                                                                increase: prettifyCurrency(String(data.increase)),
+                                                                other_prague_type: data.other_prague_type,
+                                                                other_treatment_type: data.other_treatment_type,
+                                                                build_description: data.build_description,
+                                                                animals: data.animals,
+                                                                old_people: data.old_people,
+                                                                allergic_people: data.allergic_people,
+                                                                value: prettifyCurrency(String(data.value)),
                                                                 payment: data.payment,
-                                                                expire_at: format(new Date(data.expire_at), 'yyyy-MM-dd'),
+                                                                warranty: data.warranty,
+                                                                start_at: format(new Date(data.start_at), 'yyyy-MM-dd'),
                                                                 finish_at: format(new Date(data.finish_at), 'yyyy-MM-dd'),
                                                                 notes: data.notes,
-                                                                status: data.status.id,
                                                             }}
                                                             onSubmit={async values => {
                                                                 if (!selectedCustomer) {
@@ -382,7 +438,7 @@ const EditEstimate: NextPage = () => {
                                                                 setMessageShow(true);
 
                                                                 try {
-                                                                    await api.put(`estimates/${data.id}`, {
+                                                                    await api.put(`services/orders/${data.id}`, {
                                                                         same_address: values.same_address,
                                                                         zip_code: values.zip_code,
                                                                         street: values.street,
@@ -391,43 +447,83 @@ const EditEstimate: NextPage = () => {
                                                                         complement: values.complement,
                                                                         city: values.city,
                                                                         state: values.state,
-                                                                        discount_percent: values.discount_percent,
-                                                                        discount: Number(values.discount.replaceAll(".", "").replaceAll(",", ".")),
-                                                                        increase_percent: values.increase_percent,
-                                                                        increase: Number(values.increase.replaceAll(".", "").replaceAll(",", ".")),
+                                                                        other_prague_type: values.other_prague_type,
+                                                                        other_treatment_type: values.other_treatment_type,
+                                                                        build_description: values.build_description,
+                                                                        animals: values.animals,
+                                                                        old_people: values.old_people,
+                                                                        allergic_people: values.allergic_people,
+                                                                        value: Number(values.value.replaceAll(".", "").replaceAll(",", ".")),
                                                                         payment: values.payment,
-                                                                        expire_at: `${values.expire_at} 12:00:00`,
-                                                                        finish_at: `${values.finish_at} 12:00:00`,
+                                                                        warranty: values.warranty,
                                                                         notes: values.notes,
+                                                                        start_at: `${values.start_at} 12:00:00`,
+                                                                        finish_at: `${values.finish_at} 12:00:00`,
                                                                         customer: selectedCustomer.id,
-                                                                        status: values.status,
                                                                     });
 
                                                                     itemsToDelete.forEach(async item => {
-                                                                        await api.delete(`estimates/items/${item}`);
+                                                                        await api.delete(`services/orders/items/${item}`);
                                                                     });
 
-                                                                    estimateItemsList.forEach(async item => {
+                                                                    serviceOrderItemsList.forEach(async item => {
                                                                         if (item.id.startsWith('@')) {
-                                                                            await api.post('estimates/items', {
+                                                                            await api.post('services/orders/items', {
                                                                                 name: item.name,
                                                                                 details: item.details,
-                                                                                price: item.price,
                                                                                 amount: item.amount,
                                                                                 order: item.order,
-                                                                                estimate: data.id,
+                                                                                service: data.id,
                                                                             });
-                                                                            return
+                                                                            return;
                                                                         }
 
                                                                         if (itemsToUpdate.find(id => { return id === item.id })) {
-                                                                            await api.put(`estimates/items/${item.id}`, {
+                                                                            await api.put(`services/orders/items/${item.id}`, {
                                                                                 ...item,
                                                                                 name: item.name,
                                                                                 details: item.details,
-                                                                                price: item.price,
                                                                                 amount: item.amount,
                                                                                 order: item.order,
+                                                                            });
+                                                                        }
+                                                                    });
+
+                                                                    buildsToDelete.forEach(async item => {
+                                                                        await api.delete(`services/builds-types/${item}`);
+                                                                    });
+
+                                                                    serviceBuildTypesList.forEach(async item => {
+                                                                        if (item.id.startsWith('@')) {
+                                                                            await api.post('services/builds-types', {
+                                                                                service: data.id,
+                                                                                build: item.build.id,
+                                                                            });
+                                                                        }
+                                                                    });
+
+                                                                    praguesToDelete.forEach(async item => {
+                                                                        await api.delete(`services/pragues-types/${item}`);
+                                                                    });
+
+                                                                    servicePragueTypesList.forEach(async item => {
+                                                                        if (item.id.startsWith('@')) {
+                                                                            await api.post('services/pragues-types', {
+                                                                                service: data.id,
+                                                                                prague: item.prague.id,
+                                                                            });
+                                                                        }
+                                                                    });
+
+                                                                    treatmentsToDelete.forEach(async item => {
+                                                                        await api.delete(`services/treatments-types/${item}`);
+                                                                    });
+
+                                                                    serviceTreatmentTypesList.forEach(async item => {
+                                                                        if (item.id.startsWith('@')) {
+                                                                            await api.post('services/treatments-types', {
+                                                                                service: data.id,
+                                                                                treatment: item.treatment.id,
                                                                             });
                                                                         }
                                                                     });
@@ -435,7 +531,7 @@ const EditEstimate: NextPage = () => {
                                                                     setTypeMessage("success");
 
                                                                     setTimeout(() => {
-                                                                        router.push(`/estimates/details/${data.id}`)
+                                                                        router.push(`/services/orders/details/${data.id}`)
                                                                     }, 1000);
                                                                 }
                                                                 catch {
@@ -902,6 +998,206 @@ const EditEstimate: NextPage = () => {
                                                                         <Col>
                                                                             <Row>
                                                                                 <Col className="col-row">
+                                                                                    <h6 className="text-success">Tipos de pragas <FaSpider /></h6>
+                                                                                </Col>
+                                                                            </Row>
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            {
+                                                                                pragueTypesList.map((pragueType, index) => {
+                                                                                    const foundServicePragueType = servicePragueTypesList.find(item => { return item.prague.id === pragueType.id });
+
+                                                                                    if (foundServicePragueType) {
+                                                                                        return <ServicePragueTypes
+                                                                                            key={index}
+                                                                                            servicePragueType={foundServicePragueType}
+                                                                                            handleServicePragueTypesList={handleServicePragueTypesList}
+                                                                                        />
+                                                                                    }
+
+                                                                                    return <Badge
+                                                                                        key={index}
+                                                                                        className="badge-item-type"
+                                                                                        bg="light"
+                                                                                        text="dark"
+                                                                                        onClick={() => handleNewServicePragueTypeToList(pragueType)}
+                                                                                    >
+                                                                                        {pragueType.name}
+                                                                                    </Badge>
+                                                                                })
+                                                                            }
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Form.Group as={Col} controlId="formGridPragueType">
+                                                                            <Form.Label>EM CASO DE OUTRO TIPO DE PRAGA, ESPECIFICAR:</Form.Label>
+                                                                            <Form.Control
+                                                                                type="text"
+                                                                                placeholder="Outros tipos"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.other_prague_type}
+                                                                                name="other_prague_type"
+                                                                                isInvalid={!!errors.other_prague_type && touched.other_prague_type}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.other_prague_type && errors.other_prague_type}</Form.Control.Feedback>
+                                                                        </Form.Group>
+                                                                    </Row>
+
+                                                                    <Col className="border-top mt-5 mb-3"></Col>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            <Row>
+                                                                                <Col className="col-row">
+                                                                                    <h6 className="text-success">Tipo do trabamento/produto <FaSkullCrossbones /></h6>
+                                                                                </Col>
+                                                                            </Row>
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            {
+                                                                                treatmentTypesList.map((treatmentType, index) => {
+                                                                                    const foundServiceTreatmentType = serviceTreatmentTypesList.find(item => { return item.treatment.id === treatmentType.id });
+
+                                                                                    if (foundServiceTreatmentType) {
+                                                                                        return <ServiceTreatmentTypes
+                                                                                            key={index}
+                                                                                            serviceTreatmentType={foundServiceTreatmentType}
+                                                                                            handleServiceTreatmentTypesList={handleServiceTreatmentTypesList}
+                                                                                        />
+                                                                                    }
+
+                                                                                    return <Badge
+                                                                                        key={index}
+                                                                                        className="badge-item-type"
+                                                                                        bg="light"
+                                                                                        text="dark"
+                                                                                        onClick={() => handleNewServiceTreatmentTypeToList(treatmentType)}
+                                                                                    >
+                                                                                        {treatmentType.name}
+                                                                                    </Badge>
+                                                                                })
+                                                                            }
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Form.Group as={Col} controlId="formGridTreatmentType">
+                                                                            <Form.Label>EM CASO DE OUTRO TRATAMENTO OU PRODUTO, ESPECIFICAR:</Form.Label>
+                                                                            <Form.Control
+                                                                                type="text"
+                                                                                placeholder="Outros tipos"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.other_treatment_type}
+                                                                                name="other_treatment_type"
+                                                                                isInvalid={!!errors.other_treatment_type && touched.other_treatment_type}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.other_treatment_type && errors.other_treatment_type}</Form.Control.Feedback>
+                                                                        </Form.Group>
+                                                                    </Row>
+
+                                                                    <Col className="border-top mt-5 mb-3"></Col>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            <Row>
+                                                                                <Col className="col-row">
+                                                                                    <h6 className="text-success">Tipo do estabelecimento <FaBuilding /></h6>
+                                                                                </Col>
+                                                                            </Row>
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            {
+                                                                                buildTypesList.map((buildType, index) => {
+                                                                                    const foundServiceBuildType = serviceBuildTypesList.find(item => { return item.build.id === buildType.id });
+
+                                                                                    if (foundServiceBuildType) {
+                                                                                        return <ServiceBuildTypes
+                                                                                            key={index}
+                                                                                            serviceBuildType={foundServiceBuildType}
+                                                                                            handleServiceBuildTypesList={handleServiceBuildTypesList}
+                                                                                        />
+                                                                                    }
+
+                                                                                    return <Badge
+                                                                                        key={index}
+                                                                                        className="badge-item-type"
+                                                                                        bg="light"
+                                                                                        text="dark"
+                                                                                        onClick={() => handleNewServiceBuildTypeToList(buildType)}
+                                                                                    >
+                                                                                        {buildType.name}
+                                                                                    </Badge>
+                                                                                })
+                                                                            }
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
+                                                                        <Form.Group as={Col} controlId="formGridBuildDescription">
+                                                                            <Form.Label>Descrição do local</Form.Label>
+                                                                            <Form.Control
+                                                                                type="text"
+                                                                                placeholder="Descreva o tipo de local"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.build_description}
+                                                                                name="build_description"
+                                                                                isInvalid={!!errors.build_description && touched.build_description}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.build_description && errors.build_description}</Form.Control.Feedback>
+                                                                        </Form.Group>
+                                                                    </Row>
+
+                                                                    <Row className="mb-2">
+                                                                        <Col>
+                                                                            <Form.Check
+                                                                                type="switch"
+                                                                                id="animals"
+                                                                                label="Animais no local?"
+                                                                                checked={values.animals}
+                                                                                onChange={() => { setFieldValue('animals', !values.animals) }}
+                                                                            />
+                                                                        </Col>
+
+                                                                        <Col>
+                                                                            <Form.Check
+                                                                                type="switch"
+                                                                                id="old_people"
+                                                                                label="Pessoas idosas?"
+                                                                                checked={values.old_people}
+                                                                                onChange={() => { setFieldValue('old_people', !values.old_people) }}
+                                                                            />
+                                                                        </Col>
+
+                                                                        <Col>
+                                                                            <Form.Check
+                                                                                type="switch"
+                                                                                id="allergic_people"
+                                                                                label="Pessoas alérgicas?"
+                                                                                checked={values.allergic_people}
+                                                                                onChange={() => { setFieldValue('allergic_people', !values.allergic_people) }}
+                                                                            />
+                                                                        </Col>
+                                                                    </Row>
+
+                                                                    <Col className="border-top mt-5 mb-3"></Col>
+
+                                                                    <Row className="mb-3">
+                                                                        <Col>
+                                                                            <Row>
+                                                                                <Col className="col-row">
                                                                                     <h6 className="text-success">Itens <FaClipboardList /></h6>
                                                                                 </Col>
 
@@ -909,8 +1205,8 @@ const EditEstimate: NextPage = () => {
                                                                                     <Button
                                                                                         variant="outline-success"
                                                                                         size="sm"
-                                                                                        onClick={handleShowNewEstimateItemModal}
-                                                                                        title="Adicionar um novo serviço a este orçamento."
+                                                                                        onClick={handleShowNewServiceOrderItemModal}
+                                                                                        title="Adicionar um novo serviço a este ordem de serviço."
                                                                                     >
                                                                                         <FaPlus />
                                                                                     </Button>
@@ -920,18 +1216,16 @@ const EditEstimate: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row>
-                                                                        <Col sm={1}><h6 className="text-secondary">Quantidade</h6></Col>
-                                                                        <Col sm={3}><h6 className="text-secondary">Produto</h6></Col>
-                                                                        <Col sm={3}><h6 className="text-secondary">Detalhes</h6></Col>
-                                                                        <Col sm={2}><h6 className="text-secondary">Unitário</h6></Col>
-                                                                        <Col sm={2}><h6 className="text-secondary">Total</h6></Col>
+                                                                        <Col sm={2}><h6 className="text-secondary">Quantidade</h6></Col>
+                                                                        <Col sm={4}><h6 className="text-secondary">Produto</h6></Col>
+                                                                        <Col sm={5}><h6 className="text-secondary">Detalhes</h6></Col>
                                                                     </Row>
 
                                                                     {
-                                                                        estimateItemsList && estimateItemsList.map(estimateItem => {
-                                                                            return <EstimateItems
-                                                                                key={estimateItem.id}
-                                                                                estimateItem={estimateItem}
+                                                                        serviceOrderItemsList && serviceOrderItemsList.map(serviceOrderItem => {
+                                                                            return <ServiceOrderItems
+                                                                                key={serviceOrderItem.id}
+                                                                                serviceOrderItem={serviceOrderItem}
                                                                                 servicesList={servicesList}
                                                                                 handleListItems={handleListItems}
                                                                             />
@@ -951,162 +1245,28 @@ const EditEstimate: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row className="align-items-center">
-                                                                        <Form.Group as={Col} sm={2} controlId="formGridPreSystemPrice">
-                                                                            <Form.Label>Subtotal</Form.Label>
-                                                                            <InputGroup className="mb-2">
-                                                                                <InputGroup.Text id="btnGroupPreSystemPrice">R$</InputGroup.Text>
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    value={prettifyCurrency(String(subTotal.toFixed(2)))}
-                                                                                    name="pre_system_value"
-                                                                                    aria-label="Valor do sistema "
-                                                                                    aria-describedby="btnGroupPreSystemPrice"
-                                                                                    readOnly
-                                                                                />
-                                                                            </InputGroup>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={2} controlId="formGridDiscount">
-                                                                            <Form.Label>Desconto</Form.Label>
-                                                                            <InputGroup className="mb-2">
-                                                                                <InputGroup.Text id="btnGroupDiscount">
-                                                                                    <Form.Control
-                                                                                        as="select"
-                                                                                        style={{ padding: '0 0.3rem', textAlign: 'center' }}
-                                                                                        onChange={() => {
-                                                                                            setDiscountPercent(!values.discount_percent)
-
-                                                                                            handleFinalTotal(
-                                                                                                subTotal,
-                                                                                                !values.discount_percent,
-                                                                                                discount,
-                                                                                                increasePercent,
-                                                                                                increase
-                                                                                            );
-
-                                                                                            setFieldValue('discount_percent', !values.discount_percent);
-                                                                                        }}
-                                                                                        value={values.discount_percent ? 'percent' : 'money'}
-                                                                                        name="discount_percent"
-                                                                                        isInvalid={!!errors.discount_percent && touched.discount_percent}
-                                                                                    >
-                                                                                        <option value="percent">%</option>
-                                                                                        <option value="money">R$</option>
-                                                                                    </Form.Control>
-                                                                                </InputGroup.Text>
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('discount', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        const newDiscount = Number(
-                                                                                            prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
-                                                                                        );
-
-                                                                                        setFieldValue('discount', prettifyCurrency(e.target.value));
-
-                                                                                        setDiscount(newDiscount);
-
-                                                                                        handleFinalTotal(
-                                                                                            subTotal,
-                                                                                            discountPercent,
-                                                                                            newDiscount,
-                                                                                            increasePercent,
-                                                                                            increase
-                                                                                        );
-                                                                                    }}
-                                                                                    value={values.discount}
-                                                                                    name="discount"
-                                                                                    isInvalid={!!errors.discount && touched.discount}
-                                                                                    aria-label="Valor"
-                                                                                    aria-describedby="btnGroupDiscount"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.discount && errors.discount}</Form.Control.Feedback>
-                                                                        </Form.Group >
-
-                                                                        <Form.Group as={Col} sm={2} controlId="formGridIncrease">
-                                                                            <Form.Label>Acréscimo</Form.Label>
-                                                                            <InputGroup className="mb-2">
-
-                                                                                <InputGroup.Text id="btnGroupIncrease">
-                                                                                    <Form.Control
-                                                                                        as="select"
-                                                                                        style={{ padding: '0 0.3rem', textAlign: 'center' }}
-                                                                                        onChange={() => {
-                                                                                            setIncreasePercent(!values.increase_percent);
-
-                                                                                            handleFinalTotal(
-                                                                                                subTotal,
-                                                                                                discountPercent,
-                                                                                                discount,
-                                                                                                !values.increase_percent,
-                                                                                                increase
-                                                                                            );
-
-                                                                                            setFieldValue('increase_percent', !values.increase_percent);
-                                                                                        }}
-                                                                                        value={values.increase_percent ? 'percent' : 'money'}
-                                                                                        name="increase_percent"
-                                                                                        isInvalid={!!errors.increase_percent && touched.increase_percent}
-                                                                                    >
-                                                                                        <option value="percent">%</option>
-                                                                                        <option value="money">R$</option>
-                                                                                    </Form.Control>
-                                                                                </InputGroup.Text>
-
-                                                                                <Form.Control
-                                                                                    type="text"
-                                                                                    onChange={(e) => {
-                                                                                        setFieldValue('increase', prettifyCurrency(e.target.value));
-                                                                                    }}
-                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                                                                        const newIncrease = Number(
-                                                                                            prettifyCurrency(e.target.value).replaceAll(".", "").replaceAll(",", ".")
-                                                                                        );
-
-                                                                                        setFieldValue('increase', prettifyCurrency(e.target.value));
-
-                                                                                        setIncrease(newIncrease);
-
-                                                                                        handleFinalTotal(
-                                                                                            subTotal,
-                                                                                            discountPercent,
-                                                                                            discount,
-                                                                                            increasePercent,
-                                                                                            newIncrease,
-                                                                                        );
-                                                                                    }}
-                                                                                    value={values.increase}
-                                                                                    name="increase"
-                                                                                    isInvalid={!!errors.increase && touched.increase}
-                                                                                    aria-label="Valor"
-                                                                                    aria-describedby="btnGroupIncrease"
-                                                                                />
-                                                                            </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
-                                                                        </Form.Group >
-
                                                                         <Form.Group as={Col} sm={2} controlId="formGridTotal">
-                                                                            <h6 className="text-success">Valor final <FaMoneyBillWave /></h6>
-                                                                            <InputGroup className="mb-2">
+                                                                            <h6 className="text-success">Valor do serviço <FaMoneyBillWave /></h6>
+                                                                            <InputGroup>
                                                                                 <InputGroup.Text id="btnGroupTotal">R$</InputGroup.Text>
                                                                                 <Form.Control
                                                                                     type="text"
-                                                                                    value={prettifyCurrency(String(finalTotal.toFixed(2)))}
-                                                                                    name="total"
+                                                                                    onChange={(e) => {
+                                                                                        setFieldValue('value', prettifyCurrency(e.target.value));
+                                                                                    }}
+                                                                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                                                                        setFieldValue('value', prettifyCurrency(e.target.value));
+                                                                                    }}
+                                                                                    value={prettifyCurrency(values.value)}
+                                                                                    name="value"
                                                                                     aria-label="Valor"
-                                                                                    aria-describedby="btnGroupTotal"
-                                                                                    readOnly
+                                                                                    aria-describedby="btnGroupValue"
                                                                                 />
                                                                             </InputGroup>
-                                                                            <Form.Control.Feedback type="invalid">{touched.increase && errors.increase}</Form.Control.Feedback>
+                                                                            <Form.Control.Feedback type="invalid">{touched.value && errors.value}</Form.Control.Feedback>
                                                                         </Form.Group>
-                                                                    </Row>
 
-                                                                    <Row className="mb-3">
-                                                                        <Form.Group as={Col} controlId="formGridPayment">
+                                                                        <Form.Group as={Col} sm={10} controlId="formGridPayment">
                                                                             <Form.Label>Pagamento</Form.Label>
                                                                             <Form.Control
                                                                                 type="text"
@@ -1122,17 +1282,33 @@ const EditEstimate: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row className="mb-3">
+                                                                        <Form.Group as={Col} controlId="formGridPayment">
+                                                                            <Form.Label>Garantia</Form.Label>
+                                                                            <Form.Control
+                                                                                type="text"
+                                                                                placeholder="Descreva a garantia do serviço"
+                                                                                onChange={handleChange}
+                                                                                onBlur={handleBlur}
+                                                                                value={values.warranty}
+                                                                                name="warranty"
+                                                                                isInvalid={!!errors.warranty && touched.warranty}
+                                                                            />
+                                                                            <Form.Control.Feedback type="invalid">{touched.warranty && errors.warranty}</Form.Control.Feedback>
+                                                                        </Form.Group>
+                                                                    </Row>
+
+                                                                    <Row className="mb-3">
                                                                         <Form.Group as={Col} sm={3} controlId="formGridExpireAt">
-                                                                            <Form.Label>Validade do orçamento</Form.Label>
+                                                                            <Form.Label>Início do serviço</Form.Label>
                                                                             <Form.Control
                                                                                 type="date"
                                                                                 onChange={handleChange}
                                                                                 onBlur={handleBlur}
-                                                                                value={values.expire_at}
-                                                                                name="expire_at"
-                                                                                isInvalid={!!errors.expire_at && touched.expire_at}
+                                                                                value={values.start_at}
+                                                                                name="start_at"
+                                                                                isInvalid={!!errors.start_at && touched.start_at}
                                                                             />
-                                                                            <Form.Control.Feedback type="invalid">{touched.expire_at && errors.expire_at}</Form.Control.Feedback>
+                                                                            <Form.Control.Feedback type="invalid">{touched.start_at && errors.start_at}</Form.Control.Feedback>
                                                                         </Form.Group>
 
                                                                         <Form.Group as={Col} sm={3} controlId="formGridFinishAt">
@@ -1146,26 +1322,6 @@ const EditEstimate: NextPage = () => {
                                                                                 isInvalid={!!errors.finish_at && touched.finish_at}
                                                                             />
                                                                             <Form.Control.Feedback type="invalid">{touched.finish_at && errors.finish_at}</Form.Control.Feedback>
-                                                                        </Form.Group>
-
-                                                                        <Form.Group as={Col} sm={6} controlId="formGridStatus">
-                                                                            <Form.Label>Fase</Form.Label>
-                                                                            <Form.Control
-                                                                                as="select"
-                                                                                onChange={handleChange}
-                                                                                onBlur={handleBlur}
-                                                                                value={values.status}
-                                                                                name="status"
-                                                                                isInvalid={!!errors.status && touched.status}
-                                                                            >
-                                                                                <option hidden>...</option>
-                                                                                {
-                                                                                    estimateStatusList.map((status, index) => {
-                                                                                        return <option key={index} value={status.id}>{status.name}</option>
-                                                                                    })
-                                                                                }
-                                                                            </Form.Control>
-                                                                            <Form.Control.Feedback type="invalid">{touched.status && errors.status}</Form.Control.Feedback>
                                                                         </Form.Group>
                                                                     </Row>
 
@@ -1191,10 +1347,10 @@ const EditEstimate: NextPage = () => {
                                                                             messageShow ? <Col sm={3}><AlertMessage status={typeMessage} /></Col> :
                                                                                 <>
                                                                                     {
-                                                                                        can(user, "estimates", "remove") && <Col className="col-row">
+                                                                                        can(user, "services", "remove") && <Col className="col-row">
                                                                                             <Button
                                                                                                 variant="danger"
-                                                                                                title="Excluir orçamento."
+                                                                                                title="Excluir ordem de serviço."
                                                                                                 onClick={handelShowItemDelete}
                                                                                             >
                                                                                                 Excluir
@@ -1213,12 +1369,12 @@ const EditEstimate: NextPage = () => {
                                                             )}
                                                         </Formik>
 
-                                                        <NewEstimateItem
-                                                            show={showNewEstimateItemModal}
+                                                        <NewServiceOrderItem
+                                                            show={showNewServiceOrderItemModal}
                                                             servicesList={servicesList}
-                                                            estimateItemsList={estimateItemsList}
+                                                            serviceOrderItemsList={serviceOrderItemsList}
                                                             handleNewItemToList={handleNewItemToList}
-                                                            handleCloseNewEstimateItemModal={handleCloseNewEstimateItemModal}
+                                                            handleCloseNewServiceOrderItemModal={handleCloseNewServiceOrderItemModal}
                                                         />
 
                                                         <SearchCustomers
@@ -1229,17 +1385,17 @@ const EditEstimate: NextPage = () => {
 
                                                         <Modal show={showItemDelete} onHide={handleCloseItemDelete}>
                                                             <Modal.Header closeButton>
-                                                                <Modal.Title>Excluir orçamento</Modal.Title>
+                                                                <Modal.Title>Excluir ordem de serviço</Modal.Title>
                                                             </Modal.Header>
                                                             <Modal.Body>
-                                                                Você tem certeza que deseja excluir este orçamento? Essa ação não poderá ser desfeita.
+                                                                Você tem certeza que deseja excluir este ordem de serviço? Essa ação não poderá ser desfeita.
                                                             </Modal.Body>
                                                             <Modal.Footer>
                                                                 {
                                                                     deletingMessageShow ? <AlertMessage status={typeMessage} /> :
                                                                         <>
                                                                             {
-                                                                                can(user, "estimates", "remove") && <Button
+                                                                                can(user, "services", "remove") && <Button
                                                                                     variant="danger"
                                                                                     type="button"
                                                                                     onClick={handleItemDelete}
@@ -1272,7 +1428,7 @@ const EditEstimate: NextPage = () => {
     )
 }
 
-export default EditEstimate;
+export default EditServiceOrder;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
     const { token } = context.req.cookies;

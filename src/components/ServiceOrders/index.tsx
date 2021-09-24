@@ -1,6 +1,9 @@
 import { Customer } from '../Customers';
 import { User } from '../Users';
 import { ServiceOrderItem } from '../ServiceOrderItems';
+import { ServiceBuildType } from '../ServiceBuildTypes';
+import { ServicePragueType } from '../ServicePragueTypes';
+import { ServiceTreatmentType } from '../ServiceTreatmentTypes';
 
 export interface ServiceOrder {
     id: string;
@@ -31,4 +34,7 @@ export interface ServiceOrder {
     updated_at: Date;
     user: User;
     items: ServiceOrderItem[];
+    builds: ServiceBuildType[];
+    pragues: ServicePragueType[];
+    treatments: ServiceTreatmentType[];
 }

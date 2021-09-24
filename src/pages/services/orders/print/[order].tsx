@@ -1,42 +1,48 @@
 import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
+import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Col, Container, Button, ButtonGroup, Table, Row } from 'react-bootstrap';
+import { Badge, Col, Container, Button, ButtonGroup, Image, Table, Row } from 'react-bootstrap';
 import { format } from 'date-fns';
+import br from 'date-fns/locale/pt-BR'
 import {
-    FaFileExport,
+    FaBuilding,
     FaPencilAlt,
-    FaCreditCard,
     FaStickyNote,
+    FaFileSignature,
     FaCashRegister,
-    FaMoneyBillWave,
     FaClipboardList,
+    FaSpider,
+    FaSkullCrossbones,
     FaPrint,
+    FaShieldAlt,
+    FaUserTie,
 } from 'react-icons/fa';
 
-import api from '../../../api/api';
-import { TokenVerify } from '../../../utils/tokenVerify';
-import { SideBarContext } from '../../../contexts/SideBarContext';
-import { AuthContext } from '../../../contexts/AuthContext';
-import { can } from '../../../components/Users';
-import { Estimate, calcSubTotal, calcFinalTotal } from '../../../components/Estimates';
-import PageBack from '../../../components/PageBack';
-import { PageWaiting, PageType } from '../../../components/PageWaiting';
-import { prettifyCurrency } from '../../../components/InputMask/masks';
+import api from '../../../../api/api';
+import { TokenVerify } from '../../../../utils/tokenVerify';
+import { SideBarContext } from '../../../../contexts/SideBarContext';
+import { AuthContext } from '../../../../contexts/AuthContext';
+import { can } from '../../../../components/Users';
+import { Store } from '../../../../components/Store';
+import { ServiceOrder } from '../../../../components/ServiceOrders';
+import PageBack from '../../../../components/PageBack';
+import { PageWaiting, PageType } from '../../../../components/PageWaiting';
+import { prettifyCurrency } from '../../../../components/InputMask/masks';
 
-export default function PropertyDetails() {
+import styles from './styles.module.css'
+
+const ServiceOrderPrint: NextPage = () => {
     const router = useRouter();
-    const { estimate } = router.query;
+    const { order } = router.query;
 
     const { handleItemSideBar, handleSelectedMenu } = useContext(SideBarContext);
     const { loading, user } = useContext(AuthContext);
 
-    const [data, setData] = useState<Estimate>();
+    const [store, setStore] = useState<Store>();
+    const [data, setData] = useState<ServiceOrder>();
     const [documentType, setDocumentType] = useState("CPF");
-
-    const [subTotal, setSubTotal] = useState(0);
-    const [finalTotal, setFinalTotal] = useState(0);
 
     const [loadingData, setLoadingData] = useState(true);
     const [hasErrors, setHasErrors] = useState(false);
@@ -45,24 +51,33 @@ export default function PropertyDetails() {
 
     useEffect(() => {
         if (user) {
-            handleItemSideBar('estimates');
-            handleSelectedMenu('estimates-index');
+            handleItemSideBar('services');
+            handleSelectedMenu('services-orders');
 
-            if (can(user, "estimates", "view")) {
-                if (estimate) {
-                    api.get(`estimates/${estimate}`).then(res => {
-                        const estimateRes: Estimate = res.data;
+            if (can(user, "services", "view")) {
+                if (order) {
+                    api.get(`services/orders/${order}`).then(res => {
+                        const serviceOrderRes: ServiceOrder = res.data;
 
-                        handleTotal(estimateRes);
-
-                        if (estimateRes.customer.document.length > 14)
+                        if (serviceOrderRes.customer.document.length > 14)
                             setDocumentType("CNPJ");
 
-                        setData(estimateRes);
+                        setData(serviceOrderRes);
+                    }).catch(err => {
+                        console.log('Error to get service order: ', err);
 
+                        setTypeLoadingMessage("error");
+                        setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
+                        setHasErrors(true);
+                    });
+
+                    api.get('store').then(res => {
+                        const storeRes: Store = res.data;
+
+                        setStore(storeRes);
                         setLoadingData(false);
                     }).catch(err => {
-                        console.log('Error to get estimate: ', err);
+                        console.log('Error to get store: ', err);
 
                         setTypeLoadingMessage("error");
                         setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
@@ -71,20 +86,7 @@ export default function PropertyDetails() {
                 }
             }
         }
-    }, [user, estimate]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    function handleTotal(estimate: Estimate) {
-        const discountValue = Number(estimate.discount);
-        const increaseValue = Number(estimate.increase);
-
-        const newSubTotal = calcSubTotal(estimate.items);
-
-        setSubTotal(newSubTotal);
-
-        const finalPrice = calcFinalTotal(newSubTotal, estimate.discount_percent, discountValue, estimate.increase_percent, increaseValue);
-
-        setFinalTotal(finalPrice);
-    }
+    }, [user, order]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function handleRoute(route: string) {
         router.push(route);
@@ -93,16 +95,16 @@ export default function PropertyDetails() {
     return (
         <>
             <NextSeo
-                title="Detalhes do orçamento"
-                description={`Detalhes do orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
+                title="Imprimir ordem de serviço"
+                description={`Imprimir ordem de serviço da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`}
                 openGraph={{
                     url: process.env.NEXT_PUBLIC_APP_URL,
-                    title: 'Detalhes do orçamento',
-                    description: `Detalhes do orçamento da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
+                    title: 'Imprimir ordem de serviço',
+                    description: `Imprimir ordem de serviço da plataforma de gerenciamento da ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                     images: [
                         {
                             url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg`,
-                            alt: `Detalhes do orçamento | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
+                            alt: `Imprimir ordem de serviço | Plataforma ${process.env.NEXT_PUBLIC_STORE_NAME}.`,
                         },
                         { url: `${process.env.NEXT_PUBLIC_APP_URL}/assets/images/logo.jpg` },
                     ],
@@ -121,52 +123,82 @@ export default function PropertyDetails() {
                                     /> :
                                         <>
                                             {
-                                                !data ? <PageWaiting status="waiting" /> :
+                                                !data || !store ? <PageWaiting status="waiting" /> :
                                                     <Container className="content-page">
                                                         <Row>
                                                             <Col>
-                                                                <Row className="mb-3">
+                                                                <Row className="mb-3 d-print-none">
                                                                     <Col>
-                                                                        <PageBack href="/estimates" subTitle="Voltar para a lista de orçamentos" />
+                                                                        <PageBack href={`/services/orders/details/${data.id}`} subTitle="Voltar para os detalhes da ordem de serviço" />
                                                                     </Col>
 
                                                                     <Col className="col-row">
                                                                         <ButtonGroup className="col-12">
                                                                             <Button
-                                                                                title="Editar orçamento."
+                                                                                title="Editar ordem de serviço."
                                                                                 variant="success"
-                                                                                onClick={() => handleRoute(`/estimates/edit/${data.id}`)}
+                                                                                onClick={() => handleRoute(`/services/orders/edit/${data.id}`)}
                                                                             >
                                                                                 <FaPencilAlt />
-                                                                            </Button>
-
-                                                                            <Button
-                                                                                title="Imprimir orçamento."
-                                                                                variant="success"
-                                                                                onClick={() => handleRoute(`/estimates/print/${data.id}`)}
-                                                                            >
-                                                                                <FaPrint />
                                                                             </Button>
                                                                         </ButtonGroup>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
+                                                                <Row className="mb-3 text-center">
                                                                     <Col>
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-success">Vendedor</h6>
-                                                                            </Col>
-                                                                        </Row>
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span>{data.created_by}</span>
-                                                                            </Col>
-                                                                        </Row>
+                                                                        <h4 className="text-dark text-wrap">ORDEM PARA PRESTAÇÃO DE SERVIÇOS DE
+                                                                            CONTROLE QUÍMICO DE PRAGAS URBANAS</h4>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
+                                                                <Row className="align-items-center mb-3">
+                                                                    <Col sm={9}>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h5 className="text-dark">{store.title}</h5>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-dark">{`${store.street}, ${store.number} - ${store.neighborhood}`}</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-dark">{store.complement}</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-dark">{`${store.zip_code}, ${store.city} - ${store.state}`}</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-dark">{`${store.phone}, ${store.email}`}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+
+                                                                    <Col>
+                                                                        <Image fluid src="/assets/images/logo.svg" alt="Mtech Solar." />
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Col className="border-top mt-1 mb-3"></Col>
+
+                                                                <Row className="mb-2">
+                                                                    <Col>
+                                                                        <h5 className="text-dark"><FaUserTie /> DADOS DO CLIENTE</h5>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-1">
                                                                     <Col sm={6}>
                                                                         <h3 className="form-control-plaintext text-success">{data.customer.name}</h3>
                                                                     </Col>
@@ -186,7 +218,7 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
+                                                                <Row className="mb-1">
                                                                     <Col sm={4}>
                                                                         <Row>
                                                                             <Col>
@@ -230,8 +262,8 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
-                                                                    <Col sm={6}>
+                                                                <Row className="mb-1">
+                                                                    <Col sm={4}>
                                                                         <Row>
                                                                             <Col>
                                                                                 <span className="text-success">Outros contatos</span>
@@ -260,7 +292,7 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
+                                                                <Row className="mb-1">
                                                                     <Col sm={2}>
                                                                         <Row>
                                                                             <Col>
@@ -304,7 +336,7 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row>
+                                                                <Row className="mb-1">
                                                                     <Col sm={4}>
                                                                         <Row>
                                                                             <Col>
@@ -320,7 +352,7 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-3">
+                                                                <Row className="mb-1">
                                                                     <Col sm={6}>
                                                                         <Row>
                                                                             <Col>
@@ -364,152 +396,283 @@ export default function PropertyDetails() {
                                                                     </Col>
                                                                 </Row>
 
+                                                                <Col className="border-top mt-1 mb-3"></Col>
+
                                                                 <Row>
                                                                     <Col>
-                                                                        <h6 className="text-success">Itens <FaClipboardList /></h6>
+                                                                        <h6 className="text-success">Tipos de pragas <FaSpider /></h6>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Table className="mb-4" striped hover size="sm" responsive>
+                                                                <Row className="mb-3">
+                                                                    {
+                                                                        data.pragues.map((pragueType, index) => {
+                                                                            return <Col className="col-row me-2" key={index}>
+                                                                                <Badge
+                                                                                    bg="light"
+                                                                                    text="dark"
+                                                                                >
+                                                                                    {pragueType.prague.name}
+                                                                                </Badge>
+                                                                            </Col>
+                                                                        })
+                                                                    }
+                                                                </Row>
+
+                                                                {
+                                                                    data.other_prague_type && !!data.other_prague_type.length && <>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-success">Outros tipos de pragas</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row className="mb-3">
+                                                                            <Col>
+                                                                                <span className="text-secondary text-wrap">{data.other_prague_type}</span>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </>
+                                                                }
+
+                                                                <Row className="mt-3">
+                                                                    <Col>
+                                                                        <h6 className="text-success">Tipos de tratamento/produto <FaSkullCrossbones /></h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    {
+                                                                        data.treatments.map((treatmentType, index) => {
+                                                                            return <Col className="col-row me-2" key={index}>
+                                                                                <Badge
+                                                                                    bg="light"
+                                                                                    text="dark"
+                                                                                >
+                                                                                    {treatmentType.treatment.name}
+                                                                                </Badge>
+                                                                            </Col>
+                                                                        })
+                                                                    }
+                                                                </Row>
+
+                                                                {
+                                                                    data.other_treatment_type && !!data.other_treatment_type.length && <>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-success">Outros tipos de tratamentos</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row className="mb-3">
+                                                                            <Col>
+                                                                                <span className="text-secondary text-wrap">{data.other_treatment_type}</span>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </>
+                                                                }
+
+                                                                <Row className="mt-3">
+                                                                    <Col>
+                                                                        <h6 className="text-success">Tipo de estabelecimento <FaBuilding /></h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    {
+                                                                        data.builds.map((buildType, index) => {
+                                                                            return <Col className="col-row me-2" key={index}>
+                                                                                <Badge
+                                                                                    bg="light"
+                                                                                    text="dark"
+                                                                                >
+                                                                                    {buildType.build.name}
+                                                                                </Badge>
+                                                                            </Col>
+                                                                        })
+                                                                    }
+                                                                </Row>
+
+                                                                <Row>
+                                                                    <Col>
+                                                                        <h6 className="text-success">Descrição do local</h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    <Col>
+                                                                        <h6 className="text-secondary text-wrap">{data.build_description}</h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row>
+                                                                    <Col>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-success">Animais no local?</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{data.animals ? "Sim" : "Não"}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+
+                                                                    <Col>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-success">Pessoas idosas?</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{data.old_people ? "Sim" : "Não"}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+
+                                                                    <Col>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-success">Pessoas alérgicas?</h6>
+                                                                            </Col>
+                                                                        </Row>
+
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <h6 className="text-secondary">{data.allergic_people ? "Sim" : "Não"}</h6>
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Col className="border-top mt-1 mb-3"></Col>
+
+                                                                <Row className="mb-2">
+                                                                    <Col>
+                                                                        <h5 className="text-dark"><FaClipboardList /> ITENS</h5>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Table striped hover size="sm" responsive>
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Quantidade</th>
                                                                             <th>Produto</th>
                                                                             <th>Detalhes</th>
-                                                                            <th>Unitário</th>
-                                                                            <th>Total</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
                                                                         {
                                                                             data.items.map((item, index) => {
-                                                                                const total = item.amount * item.price;
-
                                                                                 return <tr key={index}>
                                                                                     <td>{prettifyCurrency(Number(item.amount).toFixed(2))}</td>
                                                                                     <td>{item.name}</td>
                                                                                     <td>{item.details}</td>
-                                                                                    <td>{`R$ ${prettifyCurrency(Number(item.price).toFixed(2))}`}</td>
-                                                                                    <td>{`R$ ${prettifyCurrency(total.toFixed(2))}`}</td>
                                                                                 </tr>
                                                                             })
                                                                         }
                                                                     </tbody>
                                                                 </Table>
 
-                                                                <Row>
+                                                                <Col className="border-top mt-1 mb-3"></Col>
+
+                                                                <Row className="mb-2">
                                                                     <Col>
-                                                                        <h6 className="text-success">Valores <FaCashRegister /></h6>
+                                                                        <h5 className="text-dark"><FaCashRegister /> VALORES</h5>
                                                                     </Col>
                                                                 </Row>
 
                                                                 <Row className="mb-4">
-                                                                    <Col sm={3}>
+                                                                    <Col sm={2}>
                                                                         <Row>
                                                                             <Col>
-                                                                                <span className="text-success">Subtotal</span>
+                                                                                <span className="text-success">Valor do serviço</span>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(Number(subTotal).toFixed(2))}`} </h6>
-                                                                            </Col>
-                                                                        </Row>
-                                                                    </Col>
-
-                                                                    <Col sm={3}>
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span className="text-success">Desconto</span>
-                                                                            </Col>
-                                                                        </Row>
-
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-secondary">{
-                                                                                    `${data.discount_percent ? '' : 'R$ '}${prettifyCurrency(String(data.discount))} ${data.discount_percent ? '%' : ''}`
-                                                                                }</h6>
+                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(Number(data.value).toFixed(2))}`} </h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
 
-                                                                    <Col sm={3}>
+                                                                    <Col sm={10}>
                                                                         <Row>
                                                                             <Col>
-                                                                                <span className="text-success">Acréscimo</span>
+                                                                                <span className="text-success">Pagamento</span>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{
-                                                                                    `${data.increase_percent ? '' : 'R$ '}${prettifyCurrency(String(data.increase))} ${data.increase_percent ? '%' : ''}`
-                                                                                }</h6>
-                                                                            </Col>
-                                                                        </Row>
-                                                                    </Col>
-
-                                                                    <Col sm={3}>
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-success">Valor final <FaMoneyBillWave /></h6>
-                                                                            </Col>
-                                                                        </Row>
-
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-secondary">{`R$ ${prettifyCurrency(Number(finalTotal).toFixed(2))}`} </h6>
+                                                                                <h6 className="text-secondary">{data.payment}</h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-4">
+                                                                <Row style={{ pageBreakBefore: 'always' }} className="mb-4">
                                                                     <Col >
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-success">Pagamento <FaCreditCard /></h6>
+                                                                                <h5 className="text-dark">GARANTIA <FaShieldAlt /></h5>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <span className="text-secondary text-wrap">{data.payment}</span>
+                                                                                <span className="text-secondary text-wrap">{data.warranty}</span>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Row className="mb-5">
-                                                                    <Col >
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-success">Observação <FaStickyNote /></h6>
-                                                                            </Col>
-                                                                        </Row>
+                                                                <Col className="border-top mt-1 mb-3"></Col>
 
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span className="text-secondary text-wrap">{data.notes}</span>
-                                                                            </Col>
-                                                                        </Row>
+                                                                <Row className="mb-2">
+                                                                    <Col>
+                                                                        <h5 className="text-dark"><FaStickyNote /> OBSERVAÇÕES</h5>
                                                                     </Col>
                                                                 </Row>
 
-                                                                <Col className="border-top mt-3 mb-3"></Col>
+                                                                <Row className="mb-3">
+                                                                    <Col>
+                                                                        <span className="text-secondary text-wrap">{data.notes}</span>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Col className="border-top mt-1 mb-3"></Col>
+
+                                                                <Row className="mb-2">
+                                                                    <Col>
+                                                                        <h5 className="text-dark"><FaFileSignature /> TERMO DE ACEITE DA PROPOSTA</h5>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="mb-3">
+                                                                    <Col>
+                                                                        <span className="text-secondary text-wrap">
+                                                                            Li e estou de acordo com os termos e condições propostas neste ordem de serviço:
+                                                                        </span>
+                                                                    </Col>
+                                                                </Row>
 
                                                                 <Row className="mb-3">
                                                                     <Col>
                                                                         <Row>
                                                                             <Col>
-                                                                                <span className="text-success">Validade do orçamento</span>
+                                                                                <span className="text-success">Início do serviço</span>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-secondary">{format(new Date(data.expire_at), 'dd/MM/yyyy')}</h6>
+                                                                                <h6 className="text-secondary">{format(new Date(data.start_at), 'dd/MM/yyyy')}</h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
@@ -527,53 +690,58 @@ export default function PropertyDetails() {
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
-
-                                                                    <Col>
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span className="text-success">Fase do orçamento</span>
-                                                                            </Col>
-                                                                        </Row>
-
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-secondary">{data.status.name}</h6>
-                                                                            </Col>
-                                                                        </Row>
-                                                                    </Col>
                                                                 </Row>
 
                                                                 <Row className="mb-3">
-                                                                    <Col sm={4} >
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span className="text-success">Criado em</span>
-                                                                            </Col>
-                                                                        </Row>
-
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-secondary">{format(new Date(data.created_at), 'dd/MM/yyyy')}</h6>
-                                                                            </Col>
-                                                                        </Row>
+                                                                    <Col>
+                                                                        <span className="text-secondary text-wrap">{format(new Date(), 'PPPPp', { locale: br })}</span>
                                                                     </Col>
+                                                                </Row>
 
-                                                                    <Col sm={4} >
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <span className="text-success">Usuário</span>
-                                                                            </Col>
-                                                                        </Row>
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8} className="border-top mt-5 mb-1"></Col>
+                                                                </Row>
 
-                                                                        <Row>
-                                                                            <Col>
-                                                                                <h6 className="text-secondary">{data.created_by}</h6>
-                                                                            </Col>
-                                                                        </Row>
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8}>
+                                                                        <h6 className="text-dark">Assinatura do técnico aplicador</h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8} className="border-top mt-5 mb-1"></Col>
+                                                                </Row>
+
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8}>
+                                                                        <h6 className="text-dark">Assinatura do cliente</h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8}>
+                                                                        <h6 className="text-dark">{data.customer.name}</h6>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                <Row className="justify-content-center">
+                                                                    <Col sm={8}>
+                                                                        <h6 className="text-dark">{`${documentType}: ${data.customer.document}`}</h6>
                                                                     </Col>
                                                                 </Row>
                                                             </Col>
                                                         </Row>
+
+                                                        <div className={`d-print-none ${styles.buttonPrintContainer}`}>
+                                                            <Button
+                                                                className={styles.buttonPrint}
+                                                                variant="success"
+                                                                onClick={() => window.print()}
+                                                                title="Imprimir ordem de serviço."
+                                                            >
+                                                                <FaPrint />
+                                                            </Button>
+                                                        </div>
                                                     </Container>
                                             }
                                         </>
@@ -586,6 +754,8 @@ export default function PropertyDetails() {
         </>
     )
 }
+
+export default ServiceOrderPrint;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
     const { token } = context.req.cookies;

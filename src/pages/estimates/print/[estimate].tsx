@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
+import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
 import { Col, Container, Button, ButtonGroup, Image, Table, Row } from 'react-bootstrap';
@@ -34,7 +35,7 @@ import { prettifyCurrency } from '../../../components/InputMask/masks';
 
 import styles from './styles.module.css'
 
-export default function PropertyDetails() {
+const EstimatePrint: NextPage = () => {
     const router = useRouter();
     const { estimate } = router.query;
 
@@ -748,6 +749,8 @@ export default function PropertyDetails() {
         </>
     )
 }
+
+export default EstimatePrint;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
     const { token } = context.req.cookies;
