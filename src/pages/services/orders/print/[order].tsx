@@ -147,7 +147,7 @@ const ServiceOrderPrint: NextPage = () => {
 
                                                                 <Row className="mb-3 text-center">
                                                                     <Col>
-                                                                        <h4 className="text-dark text-wrap">ORDEM PARA PRESTAÇÃO DE SERVIÇOS DE
+                                                                        <h4 className="text-dark text-wrap text-wrap">ORDEM PARA PRESTAÇÃO DE SERVIÇOS DE
                                                                             CONTROLE QUÍMICO DE PRAGAS URBANAS</h4>
                                                                     </Col>
                                                                 </Row>
@@ -156,37 +156,37 @@ const ServiceOrderPrint: NextPage = () => {
                                                                     <Col sm={9}>
                                                                         <Row>
                                                                             <Col>
-                                                                                <h5 className="text-dark">{store.title}</h5>
+                                                                                <h5 className="text-dark text-wrap">{store.title}</h5>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.street}, ${store.number} - ${store.neighborhood}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.street}, ${store.number} - ${store.neighborhood}`}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{store.complement}</h6>
+                                                                                <h6 className="text-dark text-wrap">{store.complement}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.zip_code}, ${store.city} - ${store.state}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.zip_code}, ${store.city} - ${store.state}`}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.phone}, ${store.email}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.phone}, ${store.email}`}</h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
 
                                                                     <Col>
-                                                                        <Image fluid src="/assets/images/logo.svg" alt="Mtech Solar." />
+                                                                        <Image fluid src="/assets/images/logo.svg" alt="Controll Pest." />
                                                                     </Col>
                                                                 </Row>
 
@@ -435,7 +435,7 @@ const ServiceOrderPrint: NextPage = () => {
                                                                     </>
                                                                 }
 
-                                                                <Row className="mt-3">
+                                                                <Row className="mt-4">
                                                                     <Col>
                                                                         <h6 className="text-success">Tipos de tratamento/produto <FaSkullCrossbones /></h6>
                                                                     </Col>
@@ -472,7 +472,7 @@ const ServiceOrderPrint: NextPage = () => {
                                                                     </>
                                                                 }
 
-                                                                <Row className="mt-3">
+                                                                <Row className="mt-4">
                                                                     <Col>
                                                                         <h6 className="text-success">Tipo de estabelecimento <FaBuilding /></h6>
                                                                     </Col>

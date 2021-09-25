@@ -55,7 +55,7 @@ const Sidebar: React.FC = () => {
     return (
         showPageHeader && user ? <div className={`${styles.sideBarContainer} d-print-none`}>
             <Accordion activeKey={itemSideBar} className={styles.accordionContainer}>
-                <Card className={styles.menuCard}>
+                {/* <Card className={styles.menuCard}>
                     <AccordionButton
                         as={Card.Header}
                         className={styles.menuCardHeader}
@@ -66,7 +66,7 @@ const Sidebar: React.FC = () => {
                             <FaColumns /> <span>Painel</span>
                         </div>
                     </AccordionButton>
-                </Card>
+                </Card> */}
 
                 {
                     can(user, "customers", "view") && <Card className={styles.menuCard}>
@@ -326,29 +326,23 @@ const Sidebar: React.FC = () => {
                         </AccordionButton>
                         <Accordion.Collapse eventKey="services">
                             <Card.Body className={styles.menuCardBody}>
-                                {
-                                    can(user, "services", "view") && <>
-                                        <Dropdown.Divider />
-
-                                        <Link href="/services">
-                                            <a title="Listar os serviços" data-title="Listar os serviços">
-                                                <Row
-                                                    className={
-                                                        selectedMenu === 'services-index' ? styles.selectedMenuCardBodyItem :
-                                                            styles.menuCardBodyItem
-                                                    }
-                                                >
-                                                    <Col sm={1}>
-                                                        <FaDolly size={14} />
-                                                    </Col>
-                                                    <Col>
-                                                        <span>Serviços</span>
-                                                    </Col>
-                                                </Row>
-                                            </a>
-                                        </Link>
-                                    </>
-                                }
+                                <Link href="/services">
+                                    <a title="Listar os serviços" data-title="Listar os serviços">
+                                        <Row
+                                            className={
+                                                selectedMenu === 'services-index' ? styles.selectedMenuCardBodyItem :
+                                                    styles.menuCardBodyItem
+                                            }
+                                        >
+                                            <Col sm={1}>
+                                                <FaDolly size={14} />
+                                            </Col>
+                                            <Col>
+                                                <span>Serviços</span>
+                                            </Col>
+                                        </Row>
+                                    </a>
+                                </Link>
 
                                 <Link href="/services/orders">
                                     <a title="Listar as ordens de serviço" data-title="Listar as ordens de serviço">
@@ -556,9 +550,9 @@ export function SideNavBar() {
 
     return (
         user ? <Nav className="me-auto mb-3">
-            <Link href="/dashboard" passHref>
+            {/* <Link href="/dashboard" passHref>
                 <Nav.Link><FaColumns /> <span>Painel</span></Nav.Link>
-            </Link>
+            </Link> */}
 
             {
                 can(user, "customers", "view") && <NavDropdown title="Clientes" id="customers-dropdown">
@@ -576,15 +570,107 @@ export function SideNavBar() {
                         can(user, "customers", "update") && <>
                             <NavDropdown.Divider />
 
-                            <Link href="/docs/customer" passHref>
-                                <NavDropdown.Item ><FaIdCard size={14} /> Documentos</NavDropdown.Item>
-                            </Link>
-
                             <Link href="/customers/types" passHref>
-                                <NavDropdown.Item ><FaUsersCog size={14} /> itens do estoque</NavDropdown.Item>
+                                <NavDropdown.Item ><FaUsersCog size={14} /> Tipos</NavDropdown.Item>
                             </Link>
                         </>
                     }
+                </NavDropdown>
+            }
+
+            {
+                can(user, "estimates", "view") && <NavDropdown title="Orçamentos" id="estimates-dropdown">
+                    <Link href="/estimates" passHref>
+                        <NavDropdown.Item ><FaList size={14} /> Lista</NavDropdown.Item>
+                    </Link>
+
+                    {
+                        can(user, "estimates", "create") && <Link href="/estimates/new" passHref>
+                            <NavDropdown.Item ><FaPlus size={14} /> Novo</NavDropdown.Item>
+                        </Link>
+                    }
+
+                    {
+                        can(user, "estimates", "update") && <>
+                            <NavDropdown.Divider />
+
+                            <Link href="/estimates/status" passHref>
+                                <NavDropdown.Item ><FaProjectDiagram size={14} /> Fases</NavDropdown.Item>
+                            </Link>
+                        </>
+                    }
+                </NavDropdown>
+            }
+
+            {
+                can(user, "products", "view") && <NavDropdown title="Produtos" id="products-dropdown">
+                    <Link href="/products" passHref>
+                        <NavDropdown.Item ><FaList size={14} /> Lista</NavDropdown.Item>
+                    </Link>
+
+                    {
+                        can(user, "products", "update") && <>
+                            <NavDropdown.Divider />
+
+                            <Link href="/products/categories" passHref>
+                                <NavDropdown.Item ><FaLayerGroup size={14} /> Categorias</NavDropdown.Item>
+                            </Link>
+
+                            <NavDropdown.Divider />
+
+                            <Link href="/products/inventory" passHref>
+                                <NavDropdown.Item ><FaDolly size={14} /> Estoque</NavDropdown.Item>
+                            </Link>
+                        </>
+                    }
+                </NavDropdown>
+            }
+
+            {
+                can(user, "services", "view") && <NavDropdown title="Serviços" id="services-dropdown">
+                    <Link href="/services" passHref>
+                        <NavDropdown.Item ><FaBriefcase size={14} /> Serviços</NavDropdown.Item>
+                    </Link>
+
+                    {
+                        can(user, "services", "update") && <>
+                            <Link href="/services/orders" passHref>
+                                <NavDropdown.Item ><FaList size={14} /> Ordens</NavDropdown.Item>
+                            </Link>
+                        </>
+                    }
+
+                    {
+                        can(user, "services", "create") && <Link href="/services/orders/new" passHref>
+                            <NavDropdown.Item ><FaPlus size={14} /> Novo</NavDropdown.Item>
+                        </Link>
+                    }
+
+                    {
+                        can(user, "services", "update") && <>
+                            <NavDropdown.Divider />
+
+                            <Link href="/services/prague-types" passHref>
+                                <NavDropdown.Item ><FaSpider size={14} /> Pragas</NavDropdown.Item>
+                            </Link>
+
+                            <Link href="/services/treatment-types" passHref>
+                                <NavDropdown.Item ><FaSkullCrossbones size={14} /> Tratamentos</NavDropdown.Item>
+                            </Link>
+
+                            <Link href="/services/build-types" passHref>
+                                <NavDropdown.Item ><FaBuilding size={14} /> Locais</NavDropdown.Item>
+                            </Link>
+                        </>
+                    }
+                </NavDropdown>
+            }
+
+            {
+                can(user, "store", "update") && <NavDropdown title="Loja" id="store-dropdown">
+                    <Link href="/store" passHref>
+                        <NavDropdown.Item ><FaStore size={14} /> Configurar</NavDropdown.Item>
+                    </Link>
                 </NavDropdown>
             }
 

@@ -189,37 +189,37 @@ const EstimatePrint: NextPage = () => {
                                                                     <Col sm={9}>
                                                                         <Row>
                                                                             <Col>
-                                                                                <h5 className="text-dark">{store.title}</h5>
+                                                                                <h5 className="text-dark text-wrap">{store.title}</h5>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.street}, ${store.number} - ${store.neighborhood}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.street}, ${store.number} - ${store.neighborhood}`}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{store.complement}</h6>
+                                                                                <h6 className="text-dark text-wrap">{store.complement}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.zip_code}, ${store.city} - ${store.state}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.zip_code}, ${store.city} - ${store.state}`}</h6>
                                                                             </Col>
                                                                         </Row>
 
                                                                         <Row>
                                                                             <Col>
-                                                                                <h6 className="text-dark">{`${store.phone}, ${store.email}`}</h6>
+                                                                                <h6 className="text-dark text-wrap">{`${store.phone}, ${store.email}`}</h6>
                                                                             </Col>
                                                                         </Row>
                                                                     </Col>
 
                                                                     <Col>
-                                                                        <Image fluid src="/assets/images/logo.svg" alt="Mtech Solar." />
+                                                                        <Image fluid src="/assets/images/logo.svg" alt="Controll Pest." />
                                                                     </Col>
                                                                 </Row>
 

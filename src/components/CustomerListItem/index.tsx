@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Button, ButtonGroup, Row, Col } from 'react-bootstrap';
-import { FaFileAlt, FaMapSigns, FaPencilAlt, FaFileContract, FaExclamationCircle } from 'react-icons/fa'
+import { FaFileInvoice, FaBriefcase, FaPencilAlt, FaFileContract, FaExclamationCircle } from 'react-icons/fa'
 
 import { Customer } from '../Customers';
 
@@ -70,16 +70,16 @@ const CustomerItem: React.FC<CustomerItemProps> = ({ customer }) => {
                         <Button
                             variant="success"
                             title="Listar todos os orçamentos desse cliente."
-                            onClick={() => handleRoute(`/projects?customer=${customer.id}`)}
+                            onClick={() => handleRoute(`/estimates?customer=${customer.id}`)}
                         >
-                            <FaFileAlt />
+                            <FaFileInvoice />
                         </Button>
                         <Button
                             variant="success"
                             title="Lista todos as ordens de serviço desse cliente."
-                            onClick={() => handleRoute(`/properties?customer=${customer.id}`)}
+                            onClick={() => handleRoute(`/services/orders?customer=${customer.id}`)}
                         >
-                            <FaMapSigns />
+                            <FaBriefcase />
                         </Button>
                         <Button
                             variant="success"

@@ -586,7 +586,7 @@ const EditCustomer: NextPage = () => {
                                                                                             </Col>
                                                                                         }
 
-                                                                                        <Col sm={1}>
+                                                                                        <Col className="col-row">
                                                                                             <Button
                                                                                                 variant="success"
                                                                                                 type="submit"

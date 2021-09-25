@@ -1005,21 +1005,21 @@ const EditServiceOrder: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row className="mb-3">
-                                                                        <Col>
-                                                                            {
-                                                                                pragueTypesList.map((pragueType, index) => {
-                                                                                    const foundServicePragueType = servicePragueTypesList.find(item => { return item.prague.id === pragueType.id });
+                                                                        {
+                                                                            pragueTypesList.map((pragueType, index) => {
+                                                                                const foundServicePragueType = servicePragueTypesList.find(item => { return item.prague.id === pragueType.id });
 
-                                                                                    if (foundServicePragueType) {
-                                                                                        return <ServicePragueTypes
-                                                                                            key={index}
+                                                                                if (foundServicePragueType) {
+                                                                                    return <Col className="col-row me-2" key={index}>
+                                                                                        <ServicePragueTypes
                                                                                             servicePragueType={foundServicePragueType}
                                                                                             handleServicePragueTypesList={handleServicePragueTypesList}
                                                                                         />
-                                                                                    }
+                                                                                    </Col>
+                                                                                }
 
-                                                                                    return <Badge
-                                                                                        key={index}
+                                                                                return <Col className="col-row" key={index}>
+                                                                                    <Badge
                                                                                         className="badge-item-type"
                                                                                         bg="light"
                                                                                         text="dark"
@@ -1027,14 +1027,14 @@ const EditServiceOrder: NextPage = () => {
                                                                                     >
                                                                                         {pragueType.name}
                                                                                     </Badge>
-                                                                                })
-                                                                            }
-                                                                        </Col>
+                                                                                </Col>
+                                                                            })
+                                                                        }
                                                                     </Row>
 
                                                                     <Row className="mb-3">
                                                                         <Form.Group as={Col} controlId="formGridPragueType">
-                                                                            <Form.Label>EM CASO DE OUTRO TIPO DE PRAGA, ESPECIFICAR:</Form.Label>
+                                                                            <Form.Label className="text-wrap">EM CASO DE OUTRO TIPO DE PRAGA, ESPECIFICAR:</Form.Label>
                                                                             <Form.Control
                                                                                 type="text"
                                                                                 placeholder="Outros tipos"
@@ -1061,21 +1061,21 @@ const EditServiceOrder: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row className="mb-3">
-                                                                        <Col>
-                                                                            {
-                                                                                treatmentTypesList.map((treatmentType, index) => {
-                                                                                    const foundServiceTreatmentType = serviceTreatmentTypesList.find(item => { return item.treatment.id === treatmentType.id });
+                                                                        {
+                                                                            treatmentTypesList.map((treatmentType, index) => {
+                                                                                const foundServiceTreatmentType = serviceTreatmentTypesList.find(item => { return item.treatment.id === treatmentType.id });
 
-                                                                                    if (foundServiceTreatmentType) {
-                                                                                        return <ServiceTreatmentTypes
-                                                                                            key={index}
+                                                                                if (foundServiceTreatmentType) {
+                                                                                    return <Col className="col-row me-2" key={index}>
+                                                                                        <ServiceTreatmentTypes
                                                                                             serviceTreatmentType={foundServiceTreatmentType}
                                                                                             handleServiceTreatmentTypesList={handleServiceTreatmentTypesList}
                                                                                         />
-                                                                                    }
+                                                                                    </Col>
+                                                                                }
 
-                                                                                    return <Badge
-                                                                                        key={index}
+                                                                                return <Col className="col-row" key={index}>
+                                                                                    <Badge
                                                                                         className="badge-item-type"
                                                                                         bg="light"
                                                                                         text="dark"
@@ -1083,14 +1083,14 @@ const EditServiceOrder: NextPage = () => {
                                                                                     >
                                                                                         {treatmentType.name}
                                                                                     </Badge>
-                                                                                })
-                                                                            }
-                                                                        </Col>
+                                                                                </Col>
+                                                                            })
+                                                                        }
                                                                     </Row>
 
                                                                     <Row className="mb-3">
                                                                         <Form.Group as={Col} controlId="formGridTreatmentType">
-                                                                            <Form.Label>EM CASO DE OUTRO TRATAMENTO OU PRODUTO, ESPECIFICAR:</Form.Label>
+                                                                            <Form.Label className="text-wrap">EM CASO DE OUTRO TRATAMENTO OU PRODUTO, ESPECIFICAR:</Form.Label>
                                                                             <Form.Control
                                                                                 type="text"
                                                                                 placeholder="Outros tipos"
@@ -1117,21 +1117,22 @@ const EditServiceOrder: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row className="mb-3">
-                                                                        <Col>
-                                                                            {
-                                                                                buildTypesList.map((buildType, index) => {
-                                                                                    const foundServiceBuildType = serviceBuildTypesList.find(item => { return item.build.id === buildType.id });
+                                                                        {
+                                                                            buildTypesList.map((buildType, index) => {
+                                                                                const foundServiceBuildType = serviceBuildTypesList.find(item => { return item.build.id === buildType.id });
 
-                                                                                    if (foundServiceBuildType) {
-                                                                                        return <ServiceBuildTypes
+                                                                                if (foundServiceBuildType) {
+                                                                                    return <Col className="col-row me-2" key={index}>
+                                                                                        <ServiceBuildTypes
                                                                                             key={index}
                                                                                             serviceBuildType={foundServiceBuildType}
                                                                                             handleServiceBuildTypesList={handleServiceBuildTypesList}
                                                                                         />
-                                                                                    }
+                                                                                    </Col>
+                                                                                }
 
-                                                                                    return <Badge
-                                                                                        key={index}
+                                                                                return <Col className="col-row" key={index}>
+                                                                                    <Badge
                                                                                         className="badge-item-type"
                                                                                         bg="light"
                                                                                         text="dark"
@@ -1139,14 +1140,14 @@ const EditServiceOrder: NextPage = () => {
                                                                                     >
                                                                                         {buildType.name}
                                                                                     </Badge>
-                                                                                })
-                                                                            }
-                                                                        </Col>
+                                                                                </Col>
+                                                                            })
+                                                                        }
                                                                     </Row>
 
                                                                     <Row className="mb-3">
                                                                         <Form.Group as={Col} controlId="formGridBuildDescription">
-                                                                            <Form.Label>Descrição do local</Form.Label>
+                                                                            <Form.Label className="text-wrap">Descrição do local</Form.Label>
                                                                             <Form.Control
                                                                                 type="text"
                                                                                 placeholder="Descreva o tipo de local"
@@ -1216,9 +1217,9 @@ const EditServiceOrder: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row>
-                                                                        <Col sm={2}><h6 className="text-secondary">Quantidade</h6></Col>
-                                                                        <Col sm={4}><h6 className="text-secondary">Produto</h6></Col>
-                                                                        <Col sm={5}><h6 className="text-secondary">Detalhes</h6></Col>
+                                                                        <Col className="col-4" sm={2}><h6 className="text-secondary">Quantidade</h6></Col>
+                                                                        <Col className="col-4" sm={4}><h6 className="text-secondary">Produto</h6></Col>
+                                                                        <Col className="col-4" sm={5}><h6 className="text-secondary">Detalhes</h6></Col>
                                                                     </Row>
 
                                                                     {
@@ -1358,7 +1359,7 @@ const EditServiceOrder: NextPage = () => {
                                                                                         </Col>
                                                                                     }
 
-                                                                                    <Col sm={1}>
+                                                                                    <Col className="col-row">
                                                                                         <Button variant="success" type="submit">Salvar</Button>
                                                                                     </Col>
                                                                                 </>

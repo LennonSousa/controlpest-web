@@ -91,11 +91,11 @@ const EstimateItems: React.FC<EstimateItemsProps> = ({ estimateItem, handleListI
         <>
             <ListGroup.Item variant="light">
                 <Row className="align-items-center">
-                    <Col sm={1}><span>{prettifyCurrency(Number(estimateItem.amount).toFixed(2))}</span></Col>
-                    <Col sm={3} className="text-cut"><span>{estimateItem.name}</span></Col>
-                    <Col sm={3} className="text-cut"><span>{estimateItem.details}</span></Col>
-                    <Col sm={2}><span>{`R$ ${prettifyCurrency(Number(estimateItem.price).toFixed(2))}`}</span></Col>
-                    <Col sm={2}><span>{`R$ ${prettifyCurrency(totalPrice.toFixed(2))}`}</span></Col>
+                    <Col className="col-3" sm={1}><span>{prettifyCurrency(Number(estimateItem.amount).toFixed(2))}</span></Col>
+                    <Col sm={3} className="col-4 text-cut"><span>{estimateItem.name}</span></Col>
+                    <Col sm={3} className="col-5 text-cut"><span>{estimateItem.details}</span></Col>
+                    <Col className="col-4" sm={2}><span>{`R$ ${prettifyCurrency(Number(estimateItem.price).toFixed(2))}`}</span></Col>
+                    <Col className="col-4" sm={2}><span>{`R$ ${prettifyCurrency(totalPrice.toFixed(2))}`}</span></Col>
 
                     <Col className="text-end">
                         <Button

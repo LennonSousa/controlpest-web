@@ -71,8 +71,8 @@ const NewCustomer: NextPage = ({ authenticated, user, token }: InferGetServerSid
                                     authenticated && authenticatedUser ? <Row className="justify-content-center align-items-center">
                                         <Col md={6} className="mt-1 mb-4">
                                             <Row className="justify-content-center align-items-center">
-                                                <Col sm={8}>
-                                                    <Image fluid src="/assets/images/logo-mtech.svg" alt="Mtech Solar." />
+                                                <Col className="col-6" sm={8}>
+                                                    <Image fluid src="/assets/images/logo.svg" alt="Controll Pest." />
                                                 </Col>
                                             </Row>
                                         </Col>

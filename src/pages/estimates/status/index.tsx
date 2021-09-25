@@ -110,17 +110,17 @@ const Types: NextPage = () => {
         <>
             <NextSeo
                 title="Fases do orçamento"
-                description="Fases do orçamento da plataforma de gerenciamento da Mtech Solar."
+                description="Fases do orçamento da plataforma de gerenciamento da Controll Pest."
                 openGraph={{
                     url: 'https://app.mtechsolar.com.br',
                     title: 'Fases do orçamento',
-                    description: 'Fases do orçamento da plataforma de gerenciamento da Mtech Solar.',
+                    description: 'Fases do orçamento da plataforma de gerenciamento da Controll Pest.',
                     images: [
                         {
-                            url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg',
-                            alt: 'Fases do orçamento | Plataforma Mtech Solar',
+                            url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg',
+                            alt: 'Fases do orçamento | Plataforma Controll Pest',
                         },
-                        { url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg' },
+                        { url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg' },
                     ],
                 }}
             />

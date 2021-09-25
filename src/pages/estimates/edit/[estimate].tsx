@@ -920,11 +920,11 @@ const EditEstimate: NextPage = () => {
                                                                     </Row>
 
                                                                     <Row>
-                                                                        <Col sm={1}><h6 className="text-secondary">Quantidade</h6></Col>
-                                                                        <Col sm={3}><h6 className="text-secondary">Produto</h6></Col>
-                                                                        <Col sm={3}><h6 className="text-secondary">Detalhes</h6></Col>
-                                                                        <Col sm={2}><h6 className="text-secondary">Unitário</h6></Col>
-                                                                        <Col sm={2}><h6 className="text-secondary">Total</h6></Col>
+                                                                        <Col className="col-3" sm={1}><h6 className="text-secondary">Quantidade</h6></Col>
+                                                                        <Col className="col-4" sm={3}><h6 className="text-secondary">Produto</h6></Col>
+                                                                        <Col className="col-5" sm={3}><h6 className="text-secondary">Detalhes</h6></Col>
+                                                                        <Col className="col-4" sm={2}><h6 className="text-secondary">Unitário</h6></Col>
+                                                                        <Col className="col-4" sm={2}><h6 className="text-secondary">Total</h6></Col>
                                                                     </Row>
 
                                                                     {
@@ -1202,7 +1202,7 @@ const EditEstimate: NextPage = () => {
                                                                                         </Col>
                                                                                     }
 
-                                                                                    <Col sm={1}>
+                                                                                    <Col className="col-row">
                                                                                         <Button variant="success" type="submit">Salvar</Button>
                                                                                     </Col>
                                                                                 </>

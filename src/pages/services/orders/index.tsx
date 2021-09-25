@@ -2,10 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, ListGroup, Modal, Row } from 'react-bootstrap';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import { FaSearch } from 'react-icons/fa';
+import { Col, Container, Row } from 'react-bootstrap';
 
 import api from '../../../api/api';
 import { TokenVerify } from '../../../utils/tokenVerify';
@@ -15,18 +12,13 @@ import { can } from '../../../components/Users';
 import { ServiceOrder } from '../../../components/ServiceOrders';
 import ServiceOrderItem from '../../../components/ServiceOrderListItem';
 import { PageWaiting, PageType } from '../../../components/PageWaiting';
-import { AlertMessage, statusModal } from '../../../components/Interfaces/AlertMessage';
 import { Paginations } from '../../../components/Interfaces/Pagination';
-
-const validationSchema = Yup.object().shape({
-    name: Yup.string().required('Obrigatório!'),
-});
 
 const limit = 15;
 
 export default function ServiceOrders() {
     const router = useRouter();
-    const userId = router.query['user'];
+    const { customer } = router.query;
 
     const { handleItemSideBar, handleSelectedMenu } = useContext(SideBarContext);
     const { loading, user } = useContext(AuthContext);
@@ -39,16 +31,6 @@ export default function ServiceOrders() {
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
 
-    const [serviceOrderResults, setServiceOrderResults] = useState<ServiceOrder[]>([]);
-
-    const [showSearchModal, setShowSearchModal] = useState(false);
-
-    const handleCloseSearchModal = () => setShowSearchModal(false);
-    const handleShowSearchModal = () => setShowSearchModal(true);
-
-    const [messageShow, setMessageShow] = useState(false);
-    const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
-
     useEffect(() => {
         handleItemSideBar('services');
         handleSelectedMenu('services-index');
@@ -57,7 +39,7 @@ export default function ServiceOrders() {
             if (can(user, "services", "view")) {
                 let requestUrl = `services/orders?limit=${limit}&page=${activePage}`;
 
-                if (userId) requestUrl = `members/serviceOrders/user/${userId}?limit=${limit}&page=${activePage}`;
+                if (customer) requestUrl = `services/orders?customer=${customer}&limit=${limit}&page=${activePage}`;
 
                 api.get(requestUrl).then(res => {
                     setServiceOrders(res.data);
@@ -85,7 +67,7 @@ export default function ServiceOrders() {
         try {
             let requestUrl = `services/orders?limit=${limit}&page=${activePage}`;
 
-            if (userId) requestUrl = `members/serviceOrders/user/${userId}?limit=${limit}&page=${activePage}`;
+            if (customer) requestUrl = `services/orders?customer=${customer}&limit=${limit}&page=${activePage}`;
 
             const res = await api.get(requestUrl);
 
@@ -101,25 +83,21 @@ export default function ServiceOrders() {
         setLoadingData(false);
     }
 
-    function handleRoute(route: string) {
-        router.push(route);
-    }
-
     return (
         <>
             <NextSeo
                 title="Lista de ordens de serviço"
-                description="Lista de ordens de serviço da plataforma de gerenciamento da Mtech Solar."
+                description="Lista de ordens de serviço da plataforma de gerenciamento da Controll Pest."
                 openGraph={{
                     url: 'https://app.mtechsolar.com.br',
                     title: 'Lista de ordens de serviço',
-                    description: 'Lista de ordens de serviço da plataforma de gerenciamento da Mtech Solar.',
+                    description: 'Lista de ordens de serviço da plataforma de gerenciamento da Controll Pest.',
                     images: [
                         {
-                            url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg',
-                            alt: 'Lista de ordens de serviço | Plataforma Mtech Solar',
+                            url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg',
+                            alt: 'Lista de ordens de serviço | Plataforma Controll Pest',
                         },
-                        { url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg' },
+                        { url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg' },
                     ],
                 }}
             />
@@ -137,19 +115,6 @@ export default function ServiceOrders() {
                                                 message={textLoadingMessage}
                                             /> :
                                                 <Col>
-                                                    {
-                                                        !!serviceOrders.length && <Row className="mt-3">
-                                                            <Col className="col-row">
-                                                                <Button
-                                                                    variant="success"
-                                                                    title="Procurar uma ordem de serviço."
-                                                                    onClick={handleShowSearchModal}
-                                                                >
-                                                                    <FaSearch />
-                                                                </Button>
-                                                            </Col>
-                                                        </Row>
-                                                    }
                                                     <Row>
                                                         {
                                                             !!serviceOrders.length ? serviceOrders.map((serviceOrder, index) => {
@@ -177,111 +142,6 @@ export default function ServiceOrders() {
                                             }
                                         </Col>
                                     </Row>
-
-                                    <Modal show={showSearchModal} onHide={handleCloseSearchModal}>
-                                        <Modal.Header closeButton>
-                                            <Modal.Title>Lista de ordens de serviço</Modal.Title>
-                                        </Modal.Header>
-
-                                        <Formik
-                                            initialValues={{
-                                                name: '',
-                                            }}
-                                            onSubmit={async values => {
-                                                setTypeMessage("waiting");
-                                                setMessageShow(true);
-
-                                                try {
-                                                    const res = await api.get(`services/orders?name=${values.name}`);
-
-                                                    setServiceOrderResults(res.data);
-
-                                                    setMessageShow(false);
-                                                }
-                                                catch {
-                                                    setTypeMessage("error");
-
-                                                    setTimeout(() => {
-                                                        setMessageShow(false);
-                                                    }, 4000);
-                                                }
-                                            }}
-                                            validationSchema={validationSchema}
-                                        >
-                                            {({ handleSubmit, values, setFieldValue, errors, touched }) => (
-                                                <>
-                                                    <Modal.Body>
-                                                        <Form onSubmit={handleSubmit}>
-                                                            <Form.Group controlId="serviceOrderFormGridName">
-                                                                <Form.Label>Nome do cliente</Form.Label>
-                                                                <Form.Control type="search"
-                                                                    placeholder="Digite para pesquisar"
-                                                                    autoComplete="off"
-                                                                    onChange={(e) => {
-                                                                        setFieldValue('name', e.target.value);
-
-                                                                        if (e.target.value.length > 1)
-                                                                            handleSubmit();
-                                                                    }}
-                                                                    value={values.name}
-                                                                    isInvalid={!!errors.name && touched.name}
-                                                                />
-                                                                <Form.Control.Feedback type="invalid">{touched.name && errors.name}</Form.Control.Feedback>
-                                                            </Form.Group>
-
-                                                            <Row style={{ minHeight: '40px' }}>
-                                                                <Col>
-                                                                    {messageShow && <AlertMessage status={typeMessage} />}
-                                                                </Col>
-                                                            </Row>
-                                                        </Form>
-                                                    </Modal.Body>
-
-                                                    <Modal.Dialog scrollable style={{ marginTop: 0, width: '100%' }}>
-                                                        <Modal.Body style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
-                                                            <Row style={{ minHeight: '150px' }}>
-                                                                {
-                                                                    values.name.length > 1 && <Col>
-                                                                        {
-                                                                            !!serviceOrderResults.length ? <ListGroup className="mt-3 mb-3">
-                                                                                {
-                                                                                    serviceOrderResults.map((serviceOrder, index) => {
-                                                                                        return <ListGroup.Item
-                                                                                            key={index}
-                                                                                            action
-                                                                                            variant="light"
-                                                                                            onClick={() => handleRoute(`/services/orders/details/${serviceOrder.id}`)}
-                                                                                        >
-                                                                                            <Row>
-                                                                                                <Col>
-                                                                                                    <h6>{serviceOrder.customer}</h6>
-                                                                                                </Col>
-                                                                                            </Row>
-                                                                                            <Row>
-                                                                                                <Col>
-                                                                                                    <span className="text-italic">
-                                                                                                        {`${serviceOrder.customer.document} - ${serviceOrder.city}/${serviceOrder.state}`}
-                                                                                                    </span>
-                                                                                                </Col>
-                                                                                            </Row>
-                                                                                        </ListGroup.Item>
-                                                                                    })
-                                                                                }
-                                                                            </ListGroup> :
-                                                                                <AlertMessage status="warning" message="Nenhuma ordem de serviço encontrada!" />
-                                                                        }
-                                                                    </Col>
-                                                                }
-                                                            </Row>
-                                                        </Modal.Body>
-                                                        <Modal.Footer>
-                                                            <Button variant="secondary" onClick={handleCloseSearchModal}>Cancelar</Button>
-                                                        </Modal.Footer>
-                                                    </Modal.Dialog>
-                                                </>
-                                            )}
-                                        </Formik>
-                                    </Modal>
                                 </Container>
                             </> :
                                 <PageWaiting status="warning" message="Acesso negado!" />

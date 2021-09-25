@@ -3,10 +3,7 @@ import { GetServerSideProps } from 'next';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
-import { Button, Col, Container, Form, ListGroup, Modal, Row } from 'react-bootstrap';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import { FaSearch } from 'react-icons/fa';
+import { Col, Container, Row } from 'react-bootstrap';
 
 import api from '../../api/api';
 import { TokenVerify } from '../../utils/tokenVerify';
@@ -16,12 +13,7 @@ import { can } from '../../components/Users';
 import { Estimate } from '../../components/Estimates';
 import EstimateItem from '../../components/EstimateListItem';
 import { PageWaiting, PageType } from '../../components/PageWaiting';
-import { AlertMessage, statusModal } from '../../components/Interfaces/AlertMessage';
 import { Paginations } from '../../components/Interfaces/Pagination';
-
-const validationSchema = Yup.object().shape({
-    name: Yup.string().required('Obrigatório!'),
-});
 
 const limit = 15;
 
@@ -39,16 +31,6 @@ const Estimates: NextPage = () => {
     const [loadingData, setLoadingData] = useState(true);
     const [typeLoadingMessage, setTypeLoadingMessage] = useState<PageType>("waiting");
     const [textLoadingMessage, setTextLoadingMessage] = useState('Aguarde, carregando...');
-
-    const [estimateResults, setEstimateResults] = useState<Estimate[]>([]);
-
-    const [showSearchModal, setShowSearchModal] = useState(false);
-
-    const handleCloseSearchModal = () => setShowSearchModal(false);
-    const handleShowSearchModal = () => setShowSearchModal(true);
-
-    const [messageShow, setMessageShow] = useState(false);
-    const [typeMessage, setTypeMessage] = useState<statusModal>("waiting");
 
     useEffect(() => {
         handleItemSideBar('estimates');
@@ -102,25 +84,21 @@ const Estimates: NextPage = () => {
         setLoadingData(false);
     }
 
-    function handleRoute(route: string) {
-        router.push(route);
-    }
-
     return (
         <>
             <NextSeo
                 title="Lista de orçamentos"
-                description="Lista de orçamentos da plataforma de gerenciamento da Mtech Solar."
+                description="Lista de orçamentos da plataforma de gerenciamento da Controll Pest."
                 openGraph={{
                     url: 'https://app.mtechsolar.com.br',
                     title: 'Lista de orçamentos',
-                    description: 'Lista de orçamentos da plataforma de gerenciamento da Mtech Solar.',
+                    description: 'Lista de orçamentos da plataforma de gerenciamento da Controll Pest.',
                     images: [
                         {
-                            url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg',
-                            alt: 'Lista de orçamentos | Plataforma Mtech Solar',
+                            url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg',
+                            alt: 'Lista de orçamentos | Plataforma Controll Pest',
                         },
-                        { url: 'https://app.mtechsolar.com.br/assets/images/logo-mtech.jpg' },
+                        { url: 'https://app.mtechsolar.com.br/assets/images/logo.jpg' },
                     ],
                 }}
             />
@@ -138,19 +116,6 @@ const Estimates: NextPage = () => {
                                                 message={textLoadingMessage}
                                             /> :
                                                 <Col>
-                                                    {
-                                                        !!estimates.length && <Row className="mt-3">
-                                                            <Col className="col-row">
-                                                                <Button
-                                                                    variant="success"
-                                                                    title="Procurar um orçamento."
-                                                                    onClick={handleShowSearchModal}
-                                                                >
-                                                                    <FaSearch />
-                                                                </Button>
-                                                            </Col>
-                                                        </Row>
-                                                    }
                                                     <Row>
                                                         {
                                                             !!estimates.length ? estimates.map((estimate, index) => {
@@ -178,111 +143,6 @@ const Estimates: NextPage = () => {
                                             }
                                         </Col>
                                     </Row>
-
-                                    <Modal show={showSearchModal} onHide={handleCloseSearchModal}>
-                                        <Modal.Header closeButton>
-                                            <Modal.Title>Lista de orçamentos</Modal.Title>
-                                        </Modal.Header>
-
-                                        <Formik
-                                            initialValues={{
-                                                name: '',
-                                            }}
-                                            onSubmit={async values => {
-                                                setTypeMessage("waiting");
-                                                setMessageShow(true);
-
-                                                try {
-                                                    const res = await api.get(`estimates?name=${values.name}`);
-
-                                                    setEstimateResults(res.data);
-
-                                                    setMessageShow(false);
-                                                }
-                                                catch {
-                                                    setTypeMessage("error");
-
-                                                    setTimeout(() => {
-                                                        setMessageShow(false);
-                                                    }, 4000);
-                                                }
-                                            }}
-                                            validationSchema={validationSchema}
-                                        >
-                                            {({ handleSubmit, values, setFieldValue, errors, touched }) => (
-                                                <>
-                                                    <Modal.Body>
-                                                        <Form onSubmit={handleSubmit}>
-                                                            <Form.Group controlId="estimateFormGridName">
-                                                                <Form.Label>Nome do orçamento</Form.Label>
-                                                                <Form.Control type="search"
-                                                                    placeholder="Digite para pesquisar"
-                                                                    autoComplete="off"
-                                                                    onChange={(e) => {
-                                                                        setFieldValue('name', e.target.value);
-
-                                                                        if (e.target.value.length > 1)
-                                                                            handleSubmit();
-                                                                    }}
-                                                                    value={values.name}
-                                                                    isInvalid={!!errors.name && touched.name}
-                                                                />
-                                                                <Form.Control.Feedback type="invalid">{touched.name && errors.name}</Form.Control.Feedback>
-                                                            </Form.Group>
-
-                                                            <Row style={{ minHeight: '40px' }}>
-                                                                <Col>
-                                                                    {messageShow && <AlertMessage status={typeMessage} />}
-                                                                </Col>
-                                                            </Row>
-                                                        </Form>
-                                                    </Modal.Body>
-
-                                                    <Modal.Dialog scrollable style={{ marginTop: 0, width: '100%' }}>
-                                                        <Modal.Body style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
-                                                            <Row style={{ minHeight: '150px' }}>
-                                                                {
-                                                                    values.name.length > 1 && <Col>
-                                                                        {
-                                                                            !!estimateResults.length ? <ListGroup className="mt-3 mb-3">
-                                                                                {
-                                                                                    estimateResults.map((estimate, index) => {
-                                                                                        return <ListGroup.Item
-                                                                                            key={index}
-                                                                                            action
-                                                                                            variant="light"
-                                                                                            onClick={() => handleRoute(`/estimates/details/${estimate.id}`)}
-                                                                                        >
-                                                                                            <Row>
-                                                                                                <Col>
-                                                                                                    <h6>{estimate.customer}</h6>
-                                                                                                </Col>
-                                                                                            </Row>
-                                                                                            <Row>
-                                                                                                <Col>
-                                                                                                    <span className="text-italic">
-                                                                                                        {`${estimate.customer.document} - ${estimate.city}/${estimate.state}`}
-                                                                                                    </span>
-                                                                                                </Col>
-                                                                                            </Row>
-                                                                                        </ListGroup.Item>
-                                                                                    })
-                                                                                }
-                                                                            </ListGroup> :
-                                                                                <AlertMessage status="warning" message="Nenhum orçamento encontrado!" />
-                                                                        }
-                                                                    </Col>
-                                                                }
-                                                            </Row>
-                                                        </Modal.Body>
-                                                        <Modal.Footer>
-                                                            <Button variant="secondary" onClick={handleCloseSearchModal}>Cancelar</Button>
-                                                        </Modal.Footer>
-                                                    </Modal.Dialog>
-                                                </>
-                                            )}
-                                        </Formik>
-                                    </Modal>
                                 </Container>
                             </> :
                                 <PageWaiting status="warning" message="Acesso negado!" />

@@ -2,7 +2,6 @@ import { useContext, useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
 import type { NextPage } from 'next';
 import { NextSeo } from 'next-seo';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Accordion, Button, Col, Container, Form, Image, InputGroup, ListGroup, Modal, Row } from 'react-bootstrap';
 import { FaPlus } from 'react-icons/fa';
 import { Formik } from 'formik';
@@ -74,44 +73,6 @@ const Products: NextPage = () => {
         setCategories(res.data);
     }
 
-    function handleOnDragEnd(result: DropResult) {
-        // if (result.destination) {
-        //     const from = result.source.index;
-        //     const to = result.destination.index;
-
-        //     const updatedListDocs = produce(categories, draft => {
-        //         if (draft) {
-        //             const dragged = draft[from];
-
-        //             draft.splice(from, 1);
-        //             draft.splice(to, 0, dragged);
-        //         }
-        //     });
-
-        //     if (updatedListDocs) {
-        //         setCategories(updatedListDocs);
-        //         saveOrder(updatedListDocs);
-        //     }
-        // }
-    }
-
-    async function saveOrder(list: Category[]) {
-        // list.forEach(async (doc, index) => {
-        //     try {
-        //         await api.put(`products/${doc.id}`, {
-        //             title: doc.title,
-        //             order: index,
-        //         });
-
-        //         handleListProducts();
-        //     }
-        //     catch (err) {
-        //         console.log('error to save products order');
-        //         console.log(err)
-        //     }
-        // });
-    }
-
     return (
         <>
             <NextSeo
@@ -170,41 +131,27 @@ const Products: NextPage = () => {
                                                                 <Accordion.Body>
                                                                     {
                                                                         category.products && !!category.products.length ? <Col>
-                                                                            <DragDropContext onDragEnd={handleOnDragEnd}>
-                                                                                <Droppable droppableId={category.id}>
-                                                                                    {provided => (
-                                                                                        <div
-                                                                                            {...provided.droppableProps}
-                                                                                            ref={provided.innerRef}
-                                                                                        >
-                                                                                            <ListGroup>
-                                                                                                {
-                                                                                                    category.products.map((product, index) => {
-                                                                                                        return <Draggable key={product.id} draggableId={product.id} index={index}>
-                                                                                                            {(provided) => (
-                                                                                                                <div
-                                                                                                                    {...provided.draggableProps}
-                                                                                                                    {...provided.dragHandleProps}
-                                                                                                                    ref={provided.innerRef}
-                                                                                                                >
-                                                                                                                    <ProductsItems
-                                                                                                                        product={product}
-                                                                                                                        listProducts={category.products}
-                                                                                                                        categories={categories}
-                                                                                                                        handleListProducts={handleListProducts}
-                                                                                                                    />
-                                                                                                                </div>
-                                                                                                            )}
-
-                                                                                                        </Draggable>
-                                                                                                    })
-                                                                                                }
-                                                                                            </ListGroup>
-                                                                                            {provided.placeholder}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </Droppable>
-                                                                            </DragDropContext>
+                                                                            <ListGroup>
+                                                                                <Row>
+                                                                                    <Col><h6 className="text-secondary">Produto</h6></Col>
+                                                                                    <Col><h6 className="text-secondary">Valor de venda</h6></Col>
+                                                                                    <Col><h6 className="text-secondary">Quantidade mínima</h6></Col>
+                                                                                    <Col><h6 className="text-secondary">Quantidade no estoque</h6></Col>
+                                                                                    <Col sm={1}></Col>
+                                                                                    <Col sm={1}></Col>
+                                                                                </Row>
+                                                                                {
+                                                                                    category.products.map((product, index) => {
+                                                                                        return <ProductsItems
+                                                                                            key={index}
+                                                                                            product={product}
+                                                                                            listProducts={category.products}
+                                                                                            categories={categories}
+                                                                                            handleListProducts={handleListProducts}
+                                                                                        />
+                                                                                    })
+                                                                                }
+                                                                            </ListGroup>
                                                                         </Col> :
                                                                             <Col>
                                                                                 <Row>

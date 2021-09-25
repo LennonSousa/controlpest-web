@@ -15,12 +15,12 @@ import api from '../../../api/api';
 import { TokenVerify } from '../../../utils/tokenVerify';
 import { SideBarContext } from '../../../contexts/SideBarContext';
 import { AuthContext } from '../../../contexts/AuthContext';
-import { can, translateGrant } from '../../../components/Users';
+import { can } from '../../../components/Users';
 import { Customer } from '../../../components/Customers';
 import { Estimate } from '../../../components/Estimates';
-// import { Services } from '../../../components/Services';
+import { ServiceOrder } from '../../../components/ServiceOrders';
 import EstimateListItem from '../../../components/EstimateListItem';
-// import ServicesListItem from '../../../components/ServicesListItem';
+import ServiceOrderListItem from '../../../components/ServiceOrderListItem';
 import PageBack from '../../../components/PageBack';
 import { PageWaiting, PageType } from '../../../components/PageWaiting';
 import { AlertMessage } from '../../../components/Interfaces/AlertMessage';
@@ -50,7 +50,7 @@ const CustomerDetails: NextPage = () => {
     const [estimatesErrorShow, setEstimatesErrorShow] = useState(false);
 
     const [loadingServices, setLoadingServices] = useState(false);
-    // const [servicesData, setServicesData] = useState<Services[]>([]);
+    const [serviceOrdersData, setServiceOrdersData] = useState<ServiceOrder[]>([]);
     const [servicesErrorShow, setServicesErrorShow] = useState(false);
 
     useEffect(() => {
@@ -101,21 +101,21 @@ const CustomerDetails: NextPage = () => {
             }
 
             if (tabKey === "services") {
-                // setServicesErrorShow(false);
-                // setLoadingServices(true);
+                setServicesErrorShow(false);
+                setLoadingServices(true);
 
-                // api.get(`services?customer=${customer}`).then(res => {
-                //     setServicesData(res.data);
+                api.get(`services/orders?customer=${customer}`).then(res => {
+                    setServiceOrdersData(res.data);
 
-                //     setLoadingServices(false);
-                // }).catch(err => {
-                //     console.log('Error to get services on customer, ', err);
-                //     setServicesErrorShow(true);
+                    setLoadingServices(false);
+                }).catch(err => {
+                    console.log('Error to get services orders on customer, ', err);
+                    setServicesErrorShow(true);
 
-                //     setLoadingServices(false);
-                // });
+                    setLoadingServices(false);
+                });
 
-                // return;
+                return;
             }
         }
     }, [customer, tabKey]);
@@ -528,15 +528,15 @@ const CustomerDetails: NextPage = () => {
                                                                                             <AlertMessage status="waiting" />
                                                                                         </Col> :
                                                                                             <>
-                                                                                                {/* {
+                                                                                                {
                                                                                                     !servicesErrorShow ? <>
                                                                                                         {
-                                                                                                            !!servicesData.length ? <>
+                                                                                                            !!serviceOrdersData.length ? <>
                                                                                                                 {
-                                                                                                                    servicesData.map((service, index) => {
-                                                                                                                        return <ServicesListItem
+                                                                                                                    serviceOrdersData.map((serviceOrder, index) => {
+                                                                                                                        return <ServiceOrderListItem
                                                                                                                             key={index}
-                                                                                                                            service={service}
+                                                                                                                            serviceOrder={serviceOrder}
                                                                                                                         />
                                                                                                                     })
                                                                                                                 }
@@ -566,7 +566,7 @@ const CustomerDetails: NextPage = () => {
                                                                                                     </> : <Col sm={4}>
                                                                                                         <AlertMessage status="error" />
                                                                                                     </Col>
-                                                                                                } */}
+                                                                                                }
                                                                                             </>
                                                                                     }
                                                                                 </Row>

@@ -385,7 +385,7 @@ const ServiceOrderDetails: NextPage = () => {
                                                                     </>
                                                                 }
 
-                                                                <Row className="mt-3">
+                                                                <Row className="mt-4">
                                                                     <Col>
                                                                         <h6 className="text-success">Tipos de tratamento/produto <FaSkullCrossbones /></h6>
                                                                     </Col>
@@ -422,7 +422,7 @@ const ServiceOrderDetails: NextPage = () => {
                                                                     </>
                                                                 }
 
-                                                                <Row className="mt-3">
+                                                                <Row className="mt-4">
                                                                     <Col>
                                                                         <h6 className="text-success">Tipo de estabelecimento <FaBuilding /></h6>
                                                                     </Col>

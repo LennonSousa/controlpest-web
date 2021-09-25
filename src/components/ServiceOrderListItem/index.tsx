@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Button, ButtonGroup, Row, Col } from 'react-bootstrap';
-import { FaPencilAlt } from 'react-icons/fa'
+import { FaPencilAlt } from 'react-icons/fa';
+import { format } from 'date-fns';
 
 import { ServiceOrder } from '../ServiceOrders';
 
@@ -36,7 +37,18 @@ const ServiceOrderItem: React.FC<ServiceOrderItemProps> = ({ serviceOrder }) => 
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {!!serviceOrder.city ? serviceOrder.city : <br />}
+                            {serviceOrder.same_address ? `${serviceOrder.customer.city} - ${serviceOrder.customer.state}` :
+                                `${serviceOrder.city} - ${serviceOrder.state}`}
+                        </span>
+                    </Col>
+                </Row>
+
+                <Row>
+                    <Col>
+                        <span
+                            className={`form-control-plaintext text-secondary ${styles.itemText}`}
+                        >
+                            {`Atualizado em: ${format(new Date(serviceOrder.updated_at), 'dd/MM/yyyy')}`}
                         </span>
                     </Col>
                 </Row>

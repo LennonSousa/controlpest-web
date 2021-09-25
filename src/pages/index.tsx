@@ -58,7 +58,7 @@ const Home: NextPage = () => {
               <Row className="justify-content-center align-items-center">
                 <Col md={6} className="mt-1 mb-4">
                   <Row className="justify-content-center align-items-center">
-                    <Col sm={8}>
+                    <Col className="col-6" sm={8}>
                       <Image fluid src="/assets/images/logo.svg" alt={process.env.NEXT_PUBLIC_STORE_NAME} />
                     </Col>
                   </Row>

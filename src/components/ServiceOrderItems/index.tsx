@@ -77,9 +77,9 @@ const ServiceOrderItems: React.FC<ServiceOrderItemsProps> = ({ serviceOrderItem,
         <>
             <ListGroup.Item variant="light">
                 <Row className="align-items-center">
-                    <Col sm={2}><span>{prettifyCurrency(Number(serviceOrderItem.amount).toFixed(2))}</span></Col>
-                    <Col sm={4} className="text-cut"><span>{serviceOrderItem.name}</span></Col>
-                    <Col sm={5} className="text-cut"><span>{serviceOrderItem.details}</span></Col>
+                    <Col className="col-2" sm={2}><span>{prettifyCurrency(Number(serviceOrderItem.amount).toFixed(2))}</span></Col>
+                    <Col className="col-5 text-cut" sm={4}><span>{serviceOrderItem.name}</span></Col>
+                    <Col className="col-5 text-cut" sm={5}><span>{serviceOrderItem.details}</span></Col>
 
                     <Col className="text-end">
                         <Button

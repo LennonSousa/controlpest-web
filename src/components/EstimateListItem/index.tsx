@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Button, ButtonGroup, Row, Col } from 'react-bootstrap';
-import { FaPencilAlt } from 'react-icons/fa'
+import { FaPencilAlt } from 'react-icons/fa';
+import { format } from 'date-fns';
 
 import { Estimate } from '../Estimates';
 
@@ -36,7 +37,8 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {!!estimate.city ? estimate.city : <br />}
+                            {estimate.same_address ? `${estimate.customer.city} - ${estimate.customer.state}` :
+                                `${estimate.city} - ${estimate.state}`}
                         </span>
                     </Col>
                 </Row>
@@ -46,7 +48,7 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                         <span
                             className={`form-control-plaintext text-secondary ${styles.itemText}`}
                         >
-                            {estimate.status.name}
+                            {`${format(new Date(estimate.created_at), 'dd/MM/yyyy')} - ${estimate.status.name}`}
                         </span>
                     </Col>
                 </Row>
@@ -63,7 +65,7 @@ const EstimateItem: React.FC<EstimateItemProps> = ({ estimate }) => {
                     </ButtonGroup>
                 </Row>
             </div>
-        </Col >
+        </Col>
     )
 }
 
