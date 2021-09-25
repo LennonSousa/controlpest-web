@@ -19,7 +19,7 @@ const limit = 15;
 
 const Estimates: NextPage = () => {
     const router = useRouter();
-    const userId = router.query['user'];
+    const { customer } = router.query;
 
     const { handleItemSideBar, handleSelectedMenu } = useContext(SideBarContext);
     const { loading, user } = useContext(AuthContext);
@@ -40,7 +40,7 @@ const Estimates: NextPage = () => {
             if (can(user, "estimates", "view")) {
                 let requestUrl = `estimates?limit=${limit}&page=${activePage}`;
 
-                if (userId) requestUrl = `members/estimates/user/${userId}?limit=${limit}&page=${activePage}`;
+                if (customer) requestUrl = `estimates?customer=${customer}&limit=${limit}&page=${activePage}`;
 
                 api.get(requestUrl).then(res => {
                     setEstimates(res.data);
@@ -68,7 +68,7 @@ const Estimates: NextPage = () => {
         try {
             let requestUrl = `estimates?limit=${limit}&page=${activePage}`;
 
-            if (userId) requestUrl = `members/estimates/user/${userId}?limit=${limit}&page=${activePage}`;
+            if (customer) requestUrl = `estimates?customer=${customer}&limit=${limit}&page=${activePage}`;
 
             const res = await api.get(requestUrl);
 
