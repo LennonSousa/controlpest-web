@@ -129,7 +129,7 @@ const EditServiceOrder: NextPage = () => {
 
     useEffect(() => {
         handleItemSideBar('services');
-        handleSelectedMenu('services-index');
+        handleSelectedMenu('services-orders');
 
         if (user) {
             if (can(user, "services", "update")) {
