@@ -15,7 +15,7 @@ export interface ServiceOrderItem {
     details: string;
     amount: number;
     order: number;
-    estimate?: ServiceOrder;
+    service?: ServiceOrder;
 }
 
 interface ServiceOrderItemsProps {

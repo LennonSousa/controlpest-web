@@ -14,11 +14,6 @@ body {
     background-color: var(--background-dark);
 }
 
-body, input, button, textarea {
-    font-family: Nunito, sans-serif !important;
-}
-
-
 a {
     color: var(--green);
     text-decoration: none;

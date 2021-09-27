@@ -33,7 +33,7 @@ export default function ServiceOrders() {
 
     useEffect(() => {
         handleItemSideBar('services');
-        handleSelectedMenu('services-index');
+        handleSelectedMenu('services-orders');
 
         if (user) {
             if (can(user, "services", "view")) {

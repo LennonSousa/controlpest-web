@@ -27,6 +27,7 @@ import { AuthContext } from '../../../../contexts/AuthContext';
 import { can } from '../../../../components/Users';
 import { Customer } from '../../../../components/Customers';
 import { Service } from '../../../../components/Services';
+import { Estimate } from '../../../../components/Estimates';
 import NewServiceOrderItem from '../../../../components/ServiceOrderItems/New';
 import ServiceOrderItems, { ServiceOrderItem } from '../../../../components/ServiceOrderItems';
 import { PragueType } from '../../../../components/PragueTypes';
@@ -69,11 +70,12 @@ const validationSchema = Yup.object().shape({
 
 const NewServiceOrder: NextPage = () => {
     const router = useRouter();
-    const { customer } = router.query;
+    const { estimate, total } = router.query;
 
     const { handleItemSideBar, handleSelectedMenu } = useContext(SideBarContext);
     const { loading, user } = useContext(AuthContext);
 
+    const [estimateData, setEstimateData] = useState<Estimate>();
     const [selectedCustomer, setSelectedCustomer] = useState<Customer>();
     const [errorSelectedCustomer, setErrorSelectedCustomer] = useState(false);
 
@@ -156,11 +158,50 @@ const NewServiceOrder: NextPage = () => {
                     setHasErrors(true);
                 });
 
-                if (customer) {
-                    api.get(`customers/${customer}`).then(res => {
-                        setSelectedCustomer(res.data);
+                if (estimate) {
+                    api.get(`estimates/${estimate}`).then(res => {
+                        const estimateRes: Estimate = res.data;
+
+                        try {
+                            const stateCities = statesCities.estados.find(item => { return item.sigla === res.data.state })
+
+                            if (stateCities)
+                                setCities(stateCities.cidades);
+                        }
+                        catch { }
+
+                        setEstimateData(estimateRes);
+
+                        let newCustomer = estimateRes.customer;
+
+                        if (!estimateRes.same_address) {
+                            newCustomer = {
+                                ...newCustomer,
+                                zip_code: estimateRes.zip_code,
+                                street: estimateRes.street,
+                                number: estimateRes.number,
+                                neighborhood: estimateRes.neighborhood,
+                                complement: estimateRes.complement,
+                                city: estimateRes.city,
+                                state: estimateRes.state,
+                            }
+                        }
+
+                        setSelectedCustomer(newCustomer);
+
+                        const itemsFromEstimate: ServiceOrderItem[] = estimateRes.items.map((item, index) => {
+                            return {
+                                id: `@${index}`,
+                                name: item.name,
+                                details: item.details,
+                                amount: Number(item.amount),
+                                order: item.order,
+                            }
+                        });
+
+                        setServiceOrderItemsList(itemsFromEstimate);
                     }).catch(err => {
-                        console.log('Error to get customer on serviceOrder, ', err);
+                        console.log('Error to get estimate on serviceOrder, ', err);
 
                         setTypeLoadingMessage("error");
                         setTextLoadingMessage("Não foi possível carregar os dados, verifique a sua internet e tente novamente em alguns minutos.");
@@ -303,7 +344,7 @@ const NewServiceOrder: NextPage = () => {
 
                                             <Formik
                                                 initialValues={{
-                                                    same_address: true,
+                                                    same_address: estimateData ? estimateData.same_address : true,
                                                     zip_code: selectedCustomer ? selectedCustomer.zip_code : '',
                                                     street: selectedCustomer ? selectedCustomer.street : '',
                                                     number: selectedCustomer ? selectedCustomer.number : '',
@@ -317,10 +358,10 @@ const NewServiceOrder: NextPage = () => {
                                                     animals: false,
                                                     old_people: false,
                                                     allergic_people: false,
-                                                    value: '0,00',
-                                                    payment: '',
+                                                    value: total ? prettifyCurrency(Number(total).toFixed(2)) : '0,00',
+                                                    payment: estimateData ? estimateData.payment : '',
                                                     warranty: '',
-                                                    notes: '',
+                                                    notes: estimateData ? estimateData.notes : '',
                                                     start_at: format(new Date(), 'yyyy-MM-dd'),
                                                     finish_at: format(new Date(), 'yyyy-MM-dd'),
                                                     user: user.id,

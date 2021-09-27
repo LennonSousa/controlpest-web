@@ -6,6 +6,7 @@ import { NextSeo } from 'next-seo';
 import { Col, Container, Button, ButtonGroup, Table, Row } from 'react-bootstrap';
 import { format } from 'date-fns';
 import {
+    FaAward,
     FaFileExport,
     FaPencilAlt,
     FaCreditCard,
@@ -139,6 +140,22 @@ const EstimateDetails: NextPage = () => {
                                                                                 onClick={() => handleRoute(`/estimates/edit/${data.id}`)}
                                                                             >
                                                                                 <FaPencilAlt />
+                                                                            </Button>
+
+                                                                            <Button
+                                                                                title="Gerar ordem de serviço."
+                                                                                variant="success"
+                                                                                onClick={() => handleRoute(`/services/orders/new?estimate=${data.id}&total=${finalTotal}`)}
+                                                                            >
+                                                                                <FaFileExport />
+                                                                            </Button>
+
+                                                                            <Button
+                                                                                title="Gerar certificado."
+                                                                                variant="success"
+                                                                                onClick={() => handleRoute(`/estimates/award/${data.id}`)}
+                                                                            >
+                                                                                <FaAward />
                                                                             </Button>
 
                                                                             <Button
