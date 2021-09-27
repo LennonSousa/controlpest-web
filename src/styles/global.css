@@ -15,7 +15,7 @@ body {
 }
 
 body, input, button, textarea {
-    font: Nunito, sans-serif !important;
+    font-family: Nunito, sans-serif !important;
 }
 
 
