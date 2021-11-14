@@ -457,8 +457,8 @@ const EditServiceOrder: NextPage = () => {
                                                                         payment: values.payment,
                                                                         warranty: values.warranty,
                                                                         notes: values.notes,
-                                                                        start_at: `${values.start_at} 12:00:00`,
-                                                                        finish_at: `${values.finish_at} 12:00:00`,
+                                                                        start_at: values.start_at,
+                                                                        finish_at: values.finish_at,
                                                                         customer: selectedCustomer.id,
                                                                     });
 

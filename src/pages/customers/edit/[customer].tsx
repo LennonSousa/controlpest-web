@@ -226,7 +226,7 @@ const EditCustomer: NextPage = () => {
                                                                             state: values.state,
                                                                             owner: values.owner,
                                                                             notes: values.notes,
-                                                                            birth: new Date(`${values.birth} 12:00:00`),
+                                                                            birth: values.birth,
                                                                             type: values.type,
                                                                         });
 
